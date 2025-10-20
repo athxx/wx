@@ -1,0 +1,13 @@
+[package]
+name = "weixin"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gpui = "0.2.0"
+gpui-component = { path = "../gpui-component/crates/ui",features = ["tree-sitter-languages"] }
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+rust-embed = { version = "8.7.2", features = ["interpolate-folder-path"] }
