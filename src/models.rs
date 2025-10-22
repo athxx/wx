@@ -98,19 +98,44 @@ pub enum ToolbarItem {
     Chat,
     Contacts,
     Favorites,
-    Files,
-    Settings,
+    Moments,
+    Channels,
+    Search,
+    MiniProgram,
+    Menu,
+    Phone,
 }
 
 impl ToolbarItem {
-    pub fn icon_name(&self) -> &'static str {
+    pub fn icon_path(&self) -> &'static str {
         match self {
-            Self::Chat => "MessageCircle",
-            Self::Contacts => "Users",
-            Self::Favorites => "Star",
-            Self::Files => "Folder",
-            Self::Settings => "Settings",
+            Self::Chat => "chat-round.svg",
+            Self::Contacts => "user-list.svg",
+            Self::Favorites => "favorite.svg",
+            Self::Moments => "moments.svg",
+            Self::Channels => "channels.svg",
+            Self::Search => "search.svg",
+            Self::MiniProgram => "mini-program.svg",
+            Self::Menu => "menu.svg",
+            Self::Phone => "phone.svg",
         }
     }
-}
 
+    pub fn icon_path_fill(&self) -> Option<&'static str> {
+        match self {
+            Self::Chat => Some("chat-round-fill.svg"),
+            Self::Contacts => Some("user-list-fill.svg"),
+            Self::Favorites => Some("favorite-fill.svg"),
+            Self::Moments => None,
+            Self::Channels => None,
+            Self::Search => None,
+            Self::MiniProgram => None,
+            Self::Menu => None,
+            Self::Phone => None,
+        }
+    }
+
+    pub fn has_fill(&self) -> bool {
+        self.icon_path_fill().is_some()
+    }
+}

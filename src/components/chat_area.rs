@@ -9,10 +9,11 @@ use gpui_component::{
     h_flex,
     highlighter::Language,
     input::{InputState, TabSize, TextInput},
-    v_flex, IconName, Sizable,
+    v_flex, Icon, IconName, Sizable,
 };
 
 use crate::models::{ChatSession, Message};
+use crate::theme::Theme;
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
@@ -159,6 +160,8 @@ impl ChatArea {
     }
 
     fn render_input_area(&self, cx: &mut Context<Self>) -> AnyElement {
+        let theme = Theme::get(cx);
+
         v_flex()
             .size_full()
             .border_t_1()
@@ -166,27 +169,122 @@ impl ChatArea {
                 // 工具栏
                 div().w_full().px_3().py_1p5().child(
                     h_flex()
-                        .gap_0p5()
+                        .w_full()
+                        .items_center()
                         .child(
-                            Button::new("emoji")
-                                .ghost()
-                                .icon(IconName::Palette)
-                                .xsmall()
-                                .text_color(rgb(0x888888)),
+                            // 左侧图标组
+                            h_flex()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("emoji.svg")
+                                                .w(px(20.))
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("favorite.svg")
+                                                .w(px(20.))
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("file.svg")
+                                                .w(px(20.))
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("scissors.svg")
+                                                .w(px(20.))
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                )
+                                .child(
+                                    h_flex()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .justify_center()
+                                        .items_center()
+                                        .cursor_pointer()
+                                        .w(px(15.))
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("down.svg")
+                                                .w(px(20.)) // 宽度为其他图标的一半
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                ),
                         )
                         .child(
-                            Button::new("file")
-                                .ghost()
-                                .icon(IconName::Folder)
-                                .xsmall()
-                                .text_color(rgb(0x888888)),
+                            // 中间空白区域
+                            div().flex_1(),
                         )
                         .child(
-                            Button::new("image-btn")
-                                .ghost()
-                                .icon(IconName::File)
-                                .xsmall()
-                                .text_color(rgb(0x888888)),
+                            // 右侧图标组
+                            h_flex()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("circle.svg")
+                                                .w(px(20.))
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .p(px(6.))
+                                        .rounded(px(4.))
+                                        .cursor_pointer()
+                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .child(
+                                            Icon::default()
+                                                .path("video-call.svg")
+                                                .w(px(20.))
+                                                .h(px(20.))
+                                                .text_color(theme.colors.toolbar_icon_normal),
+                                        ),
+                                ),
                         ),
                 ),
             )
@@ -270,7 +368,8 @@ impl Render for ChatArea {
                     .flex_1()
                     .w_full()
                     .overflow_y_scroll()
-                    .bg(rgb(0xEDEDED))
+                    .border_t_1()
+                    .border_color(rgb(0xD5D5D5))
                     .when_some(self.current_session.as_ref(), |this, session| {
                         this.child(
                             v_flex().w_full().pt_4().pb_2().children(
@@ -312,7 +411,7 @@ impl Render for ChatArea {
                     )
                     .child(
                         // 内层实际显示的1px分割线
-                        div().h(px(1.)).w_full().bg(rgb(0xe0e0e0)),
+                        div().h(px(1.)).w_full().bg(rgb(0xD5D5D5)),
                     ),
             )
             .child(

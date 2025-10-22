@@ -4,8 +4,8 @@ use rust_embed::RustEmbed;
 use std::borrow::Cow;
 
 #[derive(RustEmbed)]
-#[folder = "$CARGO_MANIFEST_DIR/../gpui-component/assets"]
-#[include = "icons/**/*.svg"]
+#[folder = "assets"]
+#[include = "*.svg"]
 pub struct Assets;
 
 impl AssetSource for Assets {

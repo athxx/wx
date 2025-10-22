@@ -99,13 +99,13 @@ impl SessionList {
             .w_full()
             .px_4()
             .py_3()
+            .border_l_1()
+            .border_color(rgb(0xE1E1E1))
             .bg(if is_selected {
                 rgb(0xD3D3D3)
             } else {
                 rgb(0xF7F7F7)
             })
-            // .border_b_1()
-            // .border_color(rgb(0xf0f0f0))
             .hover(|style| {
                 if !is_selected {
                     style.bg(rgb(0xEAEAEA))
