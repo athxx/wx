@@ -299,6 +299,7 @@ impl ChatArea {
                 // 输入框容器 - 占据剩余空间，内部自动滚动
                 div().flex_1().w_full().px_2().overflow_hidden().child(
                     TextInput::new(&self.input_state)
+                        .text_sm()
                         .appearance(false)
                         .w_full()
                         .h_full(),

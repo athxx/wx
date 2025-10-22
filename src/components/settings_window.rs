@@ -1,6 +1,6 @@
 use crate::theme::{Theme, ThemeMode, WeixinThemeColors};
 use gpui::{prelude::FluentBuilder, *};
-use gpui_component::{h_flex, v_flex, ActiveTheme, Icon, Sizable};
+use gpui_component::{button::Button, h_flex, v_flex, ActiveTheme, Icon, Sizable};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SettingsTab {
@@ -254,6 +254,19 @@ impl SettingsWindow {
                             ),
                     ),
             )
+            .child(
+                // 添加查看图片按钮示例
+                v_flex()
+                    .gap_3()
+                    .child(
+                        div()
+                            .text_base()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(foreground)
+                            .child("示例按钮"),
+                    )
+                    .child(self.render_arrow_button("查看图片", cx)),
+            )
     }
 
     fn render_shortcuts(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -505,6 +518,35 @@ impl SettingsWindow {
                         .child(shortcut),
                 ),
             )
+    }
+
+    fn render_arrow_button(&self, label: &'static str, cx: &Context<Self>) -> impl IntoElement {
+        let weixin_colors = Theme::weixin_colors(cx);
+        Button::new("button-icon-4")
+            .xsmall()
+            .outline()
+            .child(
+                h_flex()
+                    .items_center()
+                    .gap_2()
+                    .text_xs()
+                    .child(label)
+                    .child(
+                        div()
+                            .p(px(1.5))
+                            .rounded_sm()
+                            .bg(weixin_colors.weixin_green)
+                            .child(
+                                Icon::default()
+                                    .path("arrow.svg")
+                                    .text_color(gpui::rgb(0xffffff)),
+                            ),
+                    ),
+            )
+            .on_click(cx.listener(|_this, _ev, _window, cx| {
+                // 这里可以添加按钮点击的逻辑
+                println!("查看图片按钮被点击");
+            }))
     }
 
     fn render_toggle(&self, enabled: bool) -> impl IntoElement {

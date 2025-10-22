@@ -221,7 +221,6 @@ impl ToolBar {
             .child(
                 div()
                     .when(hovered, |this| this.text_color(gpui::white()))
-                    .when(!hovered, |this| this.text_color(gpui::black()))
                     .child(label),
             )
     }
@@ -278,10 +277,12 @@ impl ToolBar {
                         let settings_hovered = settings_hovered.clone();
                         cx.new(|cx| {
                             PopoverContent::new(window, cx, move |_, cx| {
+                                let theme = cx.theme();
                                 v_flex()
                                     .w(px(130.))
                                     .gap_0()
                                     .py_2()
+                                    .text_color(theme.foreground)
                                     .child({
                                         let hovered = *video_live_hovered.read(cx);
                                         let state = video_live_hovered.clone();
