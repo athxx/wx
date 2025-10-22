@@ -457,14 +457,13 @@ impl SettingsWindow {
                 s.bg(weixin_colors.weixin_green_hover)
                     .text_color(theme.primary_foreground)
             })
-            .on_click(cx.listener(move |_this, _ev, window, cx| {
+            .on_click(cx.listener(move |_this, _ev, _window, cx| {
                 match mode {
                     ThemeMode::Light => Theme::set_light(cx),
                     ThemeMode::Dark => Theme::set_dark(cx),
                 }
-                // 刷新当前窗口
-                window.refresh();
-                cx.notify();
+                // 通知所有窗口主题已更改
+                cx.refresh_windows();
             }))
             .child(div().text_xs().child(label))
     }
