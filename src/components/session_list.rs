@@ -1,5 +1,5 @@
 use gpui::{
-    div, prelude::FluentBuilder, px, rgb, App, AppContext, Context, Entity, EventEmitter,
+    div, prelude::FluentBuilder, px, App, AppContext, Context, Entity, EventEmitter,
     InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled,
     Window,
 };
@@ -8,11 +8,12 @@ use gpui_component::{
     badge::Badge,
     h_flex,
     input::{InputState, TextInput},
-    v_flex, Sizable,
+    v_flex, ActiveTheme, Sizable,
 };
 
 use crate::components::GroupAvatar;
 use crate::models::Contact;
+use crate::theme::{Theme, WeixinThemeColors};
 
 #[derive(Clone)]
 pub struct SessionSelectEvent {
@@ -76,6 +77,8 @@ impl SessionList {
             .map(|id| id == &contact.id)
             .unwrap_or(false);
         let contact_id = contact.id.clone();
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
 
         let time_str = contact
             .last_message_time
@@ -100,15 +103,15 @@ impl SessionList {
             .px_4()
             .py_3()
             .border_l_1()
-            .border_color(rgb(0xE1E1E1))
+            .border_color(theme.border)
             .bg(if is_selected {
-                rgb(0xD3D3D3)
+                weixin_colors.item_selected  // 选中颜色 DEDEDE
             } else {
-                rgb(0xF7F7F7)
+                theme.transparent
             })
-            .hover(|style| {
+            .hover(move |style| {
                 if !is_selected {
-                    style.bg(rgb(0xEAEAEA))
+                    style.bg(weixin_colors.item_hover)  // hover颜色 EAEAEA
                 } else {
                     style
                 }
@@ -135,7 +138,7 @@ impl SessionList {
                                     Badge::new()
                                         .count(contact.unread_count as usize)
                                         .max(99)
-                                        .color(rgb(0xf43f31))
+                                        .color(weixin_colors.unread_badge)
                                         .when(contact.is_group, |badge| {
                                             badge.child(GroupAvatar::new(
                                                 contact.avatar_members.clone(),
@@ -183,7 +186,7 @@ impl SessionList {
                                             .flex_1()
                                             .text_base()
                                             .font_weight(gpui::FontWeight::NORMAL)
-                                            .text_color(rgb(0x000000))
+                                            .text_color(theme.foreground)
                                             .overflow_hidden()
                                             .whitespace_nowrap()
                                             .text_ellipsis()
@@ -201,7 +204,7 @@ impl SessionList {
                                         div()
                                             .flex_shrink_0()
                                             .text_xs()
-                                            .text_color(rgb(0xb3b3b3))
+                                            .text_color(theme.muted_foreground)
                                             .child(time_str),
                                     ),
                             )
@@ -210,7 +213,7 @@ impl SessionList {
                                 div()
                                     .w_full()
                                     .text_sm()
-                                    .text_color(rgb(0xb3b3b3))
+                                    .text_color(theme.muted_foreground)
                                     .overflow_hidden()
                                     .whitespace_nowrap()
                                     .text_ellipsis()
@@ -237,13 +240,16 @@ impl SessionList {
 }
 
 impl Render for SessionList {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
+        
         v_flex()
             .w_full()
             .h_full()
-            .bg(rgb(0xffffff))
+            .bg(weixin_colors.session_list_bg)  // 中间会话列表背景 F7F7F7
             // .border_r_1()
-            .border_color(rgb(0xdcdcdc))
+            .border_color(theme.border)
             .child(
                 // 会话列表 - 搜索栏已移到 TitleBar
                 div()
@@ -255,7 +261,7 @@ impl Render for SessionList {
                             self.contacts
                                 .iter()
                                 .enumerate()
-                                .map(|(i, contact)| self.render_session_item(contact, i, _cx)),
+                                .map(|(i, contact)| self.render_session_item(contact, i, cx)),
                         ),
                     ),
             )

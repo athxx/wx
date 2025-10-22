@@ -1,10 +1,6 @@
-use crate::theme::{Theme, ThemeMode};
-use gpui::{
-    div, prelude::FluentBuilder, px, App, AppContext, Context, Entity, InteractiveElement,
-    IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Window,
-    WindowControlArea,
-};
-use gpui_component::{h_flex, v_flex, Icon, IconName, Sizable};
+use crate::theme::{Theme, ThemeMode, WeixinThemeColors};
+use gpui::{prelude::FluentBuilder, *};
+use gpui_component::{h_flex, v_flex, ActiveTheme, Icon, Sizable};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SettingsTab {
@@ -45,7 +41,7 @@ impl SettingsWindow {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let is_active = self.active_tab == tab;
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         let tab_id = match tab {
             SettingsTab::AccountAndStorage => "tab-account",
@@ -64,27 +60,22 @@ impl SettingsWindow {
             .cursor_pointer()
             .rounded(px(4.))
             .bg(if is_active {
-                theme.colors.settings_sidebar_active_bg
+                theme.secondary
             } else {
-                theme.colors.settings_sidebar_bg
+                theme.transparent
             })
             .hover(move |s| {
                 if is_active {
                     s
                 } else {
-                    s.bg(theme.colors.settings_sidebar_hover_bg)
+                    s.bg(theme.secondary_hover)
                 }
             })
             .on_click(cx.listener(move |this, _ev, _window, cx| {
                 this.active_tab = tab;
                 cx.notify();
             }))
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(theme.colors.settings_text_primary)
-                    .child(label),
-            )
+            .child(div().text_sm().text_color(theme.foreground).child(label))
     }
 
     fn render_content(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
@@ -101,7 +92,8 @@ impl SettingsWindow {
     }
 
     fn render_account_and_storage(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
 
         v_flex()
             .gap_6()
@@ -109,7 +101,7 @@ impl SettingsWindow {
                 div()
                     .text_lg()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(theme.foreground)
                     .child("账号与存储"),
             )
             .child(
@@ -122,7 +114,7 @@ impl SettingsWindow {
                                 div()
                                     .text_base()
                                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme.colors.settings_text_primary)
+                                    .text_color(theme.foreground)
                                     .child("账号信息"),
                             )
                             .child(
@@ -134,7 +126,7 @@ impl SettingsWindow {
                                             .w(px(50.))
                                             .h(px(50.))
                                             .rounded(px(4.))
-                                            .bg(gpui::rgb(0xe0e0e0)),
+                                            .bg(theme.secondary),
                                     )
                                     .child(
                                         v_flex()
@@ -142,15 +134,13 @@ impl SettingsWindow {
                                             .child(
                                                 div()
                                                     .text_sm()
-                                                    .text_color(theme.colors.settings_text_primary)
+                                                    .text_color(theme.foreground)
                                                     .child("用户名"),
                                             )
                                             .child(
                                                 div()
                                                     .text_xs()
-                                                    .text_color(
-                                                        theme.colors.settings_text_secondary,
-                                                    )
+                                                    .text_color(theme.muted_foreground)
                                                     .child("微信号: wxid_123456"),
                                             ),
                                     ),
@@ -163,7 +153,7 @@ impl SettingsWindow {
                                 div()
                                     .text_base()
                                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme.colors.settings_text_primary)
+                                    .text_color(theme.foreground)
                                     .child("文件存储"),
                             )
                             .child(
@@ -172,7 +162,7 @@ impl SettingsWindow {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(theme.colors.settings_text_secondary)
+                                            .text_color(theme.muted_foreground)
                                             .child("文件存储位置"),
                                     )
                                     .child(
@@ -182,9 +172,7 @@ impl SettingsWindow {
                                             .child(
                                                 div()
                                                     .text_xs()
-                                                    .text_color(
-                                                        theme.colors.settings_text_secondary,
-                                                    )
+                                                    .text_color(theme.muted_foreground)
                                                     .child("C:\\Users\\Documents\\WeChat Files"),
                                             )
                                             .child(
@@ -192,15 +180,13 @@ impl SettingsWindow {
                                                     .px_2()
                                                     .py_1()
                                                     .rounded(px(4.))
-                                                    .bg(gpui::rgb(0xe0e0e0))
+                                                    .bg(theme.secondary)
                                                     .cursor_pointer()
-                                                    .hover(|s| s.bg(gpui::rgb(0xd0d0d0)))
+                                                    .hover(|s| s.bg(theme.secondary_hover))
                                                     .child(
                                                         div()
                                                             .text_xs()
-                                                            .text_color(
-                                                                theme.colors.settings_text_primary,
-                                                            )
+                                                            .text_color(theme.foreground)
                                                             .child("更改"),
                                                     ),
                                             ),
@@ -211,8 +197,12 @@ impl SettingsWindow {
     }
 
     fn render_general_settings(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let current_theme = Theme::get(cx);
-        let theme = &current_theme;
+        let theme_mode = cx.theme().mode;
+        let foreground = cx.theme().foreground;
+        let secondary = cx.theme().secondary;
+        let secondary_hover = cx.theme().secondary_hover;
+        let muted_foreground = cx.theme().muted_foreground;
+        let weixin_colors = Theme::weixin_colors(cx);
 
         v_flex()
             .gap_6()
@@ -220,7 +210,7 @@ impl SettingsWindow {
                 div()
                     .text_lg()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(foreground)
                     .child("通用"),
             )
             .child(
@@ -231,7 +221,7 @@ impl SettingsWindow {
                     .child(self.render_setting_row("保持在其他窗口前端", false, cx))
                     .child(self.render_setting_row("使用系统默认浏览器打开网页", true, cx)),
             )
-            .child(self.render_theme_setting(current_theme.mode, cx))
+            .child(self.render_theme_setting(theme_mode, cx))
             .child(
                 v_flex()
                     .gap_3()
@@ -239,7 +229,7 @@ impl SettingsWindow {
                         div()
                             .text_base()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(theme.colors.settings_text_primary)
+                            .text_color(foreground)
                             .child("语言"),
                     )
                     .child(
@@ -249,7 +239,7 @@ impl SettingsWindow {
                             .child(
                                 div()
                                     .text_sm()
-                                    .text_color(theme.colors.settings_text_secondary)
+                                    .text_color(muted_foreground)
                                     .child("简体中文"),
                             )
                             .child(
@@ -257,22 +247,17 @@ impl SettingsWindow {
                                     .px_2()
                                     .py_1()
                                     .rounded(px(4.))
-                                    .bg(gpui::rgb(0xe0e0e0))
+                                    .bg(secondary)
                                     .cursor_pointer()
-                                    .hover(|s| s.bg(gpui::rgb(0xd0d0d0)))
-                                    .child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(theme.colors.settings_text_primary)
-                                            .child("更改"),
-                                    ),
+                                    .hover(move |s| s.bg(secondary_hover))
+                                    .child(div().text_xs().text_color(foreground).child("更改")),
                             ),
                     ),
             )
     }
 
     fn render_shortcuts(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         v_flex()
             .gap_6()
@@ -280,7 +265,7 @@ impl SettingsWindow {
                 div()
                     .text_lg()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(theme.foreground)
                     .child("快捷键"),
             )
             .child(
@@ -295,7 +280,7 @@ impl SettingsWindow {
     }
 
     fn render_notifications(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         v_flex()
             .gap_6()
@@ -303,7 +288,7 @@ impl SettingsWindow {
                 div()
                     .text_lg()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(theme.foreground)
                     .child("通知"),
             )
             .child(
@@ -317,7 +302,7 @@ impl SettingsWindow {
     }
 
     fn render_plugins(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         v_flex()
             .gap_6()
@@ -325,21 +310,22 @@ impl SettingsWindow {
                 div()
                     .text_lg()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(theme.foreground)
                     .child("插件"),
             )
             .child(
                 v_flex().gap_3().child(
                     div()
                         .text_sm()
-                        .text_color(theme.colors.settings_text_secondary)
+                        .text_color(theme.muted_foreground)
                         .child("暂无可用插件"),
                 ),
             )
     }
 
     fn render_about(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
 
         v_flex()
             .gap_6()
@@ -347,7 +333,7 @@ impl SettingsWindow {
                 div()
                     .text_lg()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(theme.foreground)
                     .child("关于微信"),
             )
             .child(
@@ -359,7 +345,7 @@ impl SettingsWindow {
                             .w(px(80.))
                             .h(px(80.))
                             .rounded(px(8.))
-                            .bg(gpui::rgb(0x07c160))
+                            .bg(weixin_colors.weixin_green)
                             .flex()
                             .items_center()
                             .justify_center()
@@ -367,7 +353,7 @@ impl SettingsWindow {
                                 div()
                                     .text_2xl()
                                     .font_weight(gpui::FontWeight::BOLD)
-                                    .text_color(gpui::rgb(0xffffff))
+                                    .text_color(theme.primary_foreground)
                                     .child("微"),
                             ),
                     )
@@ -375,19 +361,19 @@ impl SettingsWindow {
                         div()
                             .text_base()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(theme.colors.settings_text_primary)
+                            .text_color(theme.foreground)
                             .child("微信 for Windows"),
                     )
                     .child(
                         div()
                             .text_sm()
-                            .text_color(theme.colors.settings_text_secondary)
+                            .text_color(theme.muted_foreground)
                             .child("版本 3.9.10"),
                     )
                     .child(
                         div()
                             .text_xs()
-                            .text_color(theme.colors.settings_text_secondary)
+                            .text_color(theme.muted_foreground)
                             .child("© 2011-2025 Tencent. All Rights Reserved."),
                     ),
             )
@@ -398,7 +384,7 @@ impl SettingsWindow {
         current_mode: ThemeMode,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         v_flex()
             .gap_3()
@@ -406,7 +392,7 @@ impl SettingsWindow {
                 div()
                     .text_base()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.colors.settings_text_primary)
+                    .text_color(theme.foreground)
                     .child("外观"),
             )
             .child(
@@ -417,7 +403,7 @@ impl SettingsWindow {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(theme.colors.settings_text_primary)
+                            .text_color(theme.foreground)
                             .child("主题模式"),
                     )
                     .child(
@@ -451,6 +437,8 @@ impl SettingsWindow {
             ThemeMode::Light => "theme-btn-light",
             ThemeMode::Dark => "theme-btn-dark",
         };
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
 
         div()
             .id(btn_id)
@@ -459,12 +447,16 @@ impl SettingsWindow {
             .rounded(px(4.))
             .cursor_pointer()
             .when(is_active, |this| {
-                this.bg(gpui::rgb(0x07c160)).text_color(gpui::rgb(0xffffff))
+                this.bg(weixin_colors.weixin_green)
+                    .text_color(theme.primary_foreground)
             })
             .when(!is_active, |this| {
-                this.bg(gpui::rgb(0xe0e0e0)).text_color(gpui::rgb(0x333333))
+                this.bg(theme.secondary).text_color(theme.foreground)
             })
-            .hover(|s| s.bg(gpui::rgb(0x06ad56)).text_color(gpui::rgb(0xffffff)))
+            .hover(|s| {
+                s.bg(weixin_colors.weixin_green_hover)
+                    .text_color(theme.primary_foreground)
+            })
             .on_click(cx.listener(move |_this, _ev, window, cx| {
                 match mode {
                     ThemeMode::Light => Theme::set_light(cx),
@@ -483,18 +475,13 @@ impl SettingsWindow {
         enabled: bool,
         cx: &Context<Self>,
     ) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         h_flex()
             .items_center()
             .justify_between()
             .py_2()
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(theme.colors.settings_text_primary)
-                    .child(label),
-            )
+            .child(div().text_sm().text_color(theme.foreground).child(label))
             .child(self.render_toggle(enabled))
     }
 
@@ -504,44 +491,33 @@ impl SettingsWindow {
         shortcut: &'static str,
         cx: &Context<Self>,
     ) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         h_flex()
             .items_center()
             .justify_between()
             .py_2()
+            .child(div().text_sm().text_color(theme.foreground).child(label))
             .child(
-                div()
-                    .text_sm()
-                    .text_color(theme.colors.settings_text_primary)
-                    .child(label),
-            )
-            .child(
-                div()
-                    .px_3()
-                    .py_1()
-                    .rounded(px(4.))
-                    .bg(theme.colors.settings_input_bg)
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme.colors.settings_text_secondary)
-                            .child(shortcut),
-                    ),
+                div().px_3().py_1().rounded(px(4.)).bg(theme.muted).child(
+                    div()
+                        .text_xs()
+                        .text_color(theme.muted_foreground)
+                        .child(shortcut),
+                ),
             )
     }
 
     fn render_toggle(&self, enabled: bool) -> impl IntoElement {
+        let weixin_green = rgb(0x07c160);
+        let toggle_off = rgba(0xccccccff);
+
         div()
             .w(px(40.))
             .h(px(20.))
             .rounded(px(10.))
             .cursor_pointer()
-            .bg(if enabled {
-                gpui::rgb(0x07c160)
-            } else {
-                gpui::rgb(0xcccccc)
-            })
+            .bg(if enabled { weixin_green } else { toggle_off })
             .flex()
             .items_center()
             .px(px(2.))
@@ -550,7 +526,7 @@ impl SettingsWindow {
                     .w(px(16.))
                     .h(px(16.))
                     .rounded(px(8.))
-                    .bg(gpui::rgb(0xffffff))
+                    .bg(gpui::white())
                     .when(enabled, |this| this.ml_auto()),
             )
     }
@@ -558,17 +534,21 @@ impl SettingsWindow {
 
 impl Render for SettingsWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
+        let panel_bg = theme.secondary;
+        let close_hover = rgb(0xe81123);
+        let text_color = theme.foreground;
+        let background = theme.background;
 
         v_flex()
             .size_full()
-            .bg(theme.colors.settings_sidebar_bg)
+            .bg(panel_bg)
             .child(
                 // 自定义标题栏
                 h_flex()
                     .w_full()
                     .h(px(48.))
-                    .bg(theme.colors.settings_sidebar_bg)
+                    .bg(panel_bg)
                     .items_center()
                     .child(
                         // 可拖动区域
@@ -591,12 +571,12 @@ impl Render for SettingsWindow {
                             .w(px(48.))
                             .window_control_area(WindowControlArea::Close)
                             .cursor_pointer()
-                            .hover(|s| s.bg(gpui::rgb(0xe81123)).text_color(gpui::white()))
+                            .hover(move |s| s.bg(close_hover).text_color(gpui::white()))
                             .child(
                                 Icon::default()
                                     .path("window-close.svg")
-                                    .text_color(theme.colors.settings_text_primary)
-                                    .xsmall(),
+                                    .text_color(text_color)
+                                    .small(),
                             ),
                     ),
             )
@@ -610,7 +590,7 @@ impl Render for SettingsWindow {
                         v_flex()
                             .w(px(180.))
                             .h_full()
-                            .bg(theme.colors.settings_sidebar_bg)
+                            .bg(panel_bg)
                             .py_4()
                             .gap_1()
                             .child(self.render_sidebar_item(
@@ -629,7 +609,7 @@ impl Render for SettingsWindow {
                         v_flex()
                             .flex_1()
                             .h_full()
-                            .bg(theme.colors.settings_content_bg)
+                            .bg(background)
                             .p_6()
                             .overflow_hidden()
                             .child(self.render_content(cx)),

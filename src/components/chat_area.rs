@@ -9,11 +9,11 @@ use gpui_component::{
     h_flex,
     highlighter::Language,
     input::{InputState, TabSize, TextInput},
-    v_flex, Icon, IconName, Sizable,
+    v_flex, ActiveTheme, Icon, IconName, Sizable,
 };
 
 use crate::models::{ChatSession, Message};
-use crate::theme::Theme;
+use crate::theme::{Theme, WeixinThemeColors};
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
@@ -97,7 +97,7 @@ impl ChatArea {
         });
     }
 
-    fn render_message(&self, message: &Message, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_message(&self, message: &Message, cx: &mut Context<Self>) -> impl IntoElement {
         let is_self = message.is_self;
         let time_str = message.timestamp.format("%H:%M").to_string();
         let is_group = self
@@ -105,6 +105,8 @@ impl ChatArea {
             .as_ref()
             .map(|s| s.contact.is_group)
             .unwrap_or(false);
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
 
         div().w_full().px_5().py_2().child(
             div()
@@ -127,12 +129,17 @@ impl ChatArea {
                                     this.child(
                                         div()
                                             .text_xs()
-                                            .text_color(rgb(0x888888))
+                                            .text_color(theme.muted_foreground)
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .child(message.sender_name.clone()),
                                     )
                                 })
-                                .child(div().text_xs().text_color(rgb(0xb3b3b3)).child(time_str)),
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(theme.muted_foreground)
+                                        .child(time_str),
+                                ),
                         )
                         .child(
                             // 消息气泡
@@ -142,14 +149,15 @@ impl ChatArea {
                                     .py_2()
                                     .rounded(px(4.))
                                     .bg(if is_self {
-                                        rgb(0x95ec69)
+                                        weixin_colors.message_bubble_self
                                     } else {
-                                        rgb(0xffffff)
+                                        weixin_colors.message_bubble_other
                                     })
-                                    // .when(!is_self, |this| {
-                                    //     this.border_1().border_color(rgb(0xe0e0e0)).shadow_sm()
-                                    // })
-                                    .text_color(rgb(0x000000))
+                                    .text_color(if is_self {
+                                        weixin_colors.message_text_self
+                                    } else {
+                                        weixin_colors.message_text_other
+                                    })
                                     .text_base()
                                     .line_height(relative(1.6))
                                     .child(message.content.clone()),
@@ -160,11 +168,10 @@ impl ChatArea {
     }
 
     fn render_input_area(&self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
 
         v_flex()
             .size_full()
-            .border_t_1()
             .child(
                 // 工具栏
                 div().w_full().px_3().py_1p5().child(
@@ -180,13 +187,13 @@ impl ChatArea {
                                         .p(px(6.))
                                         .rounded(px(4.))
                                         .cursor_pointer()
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("emoji.svg")
                                                 .w(px(20.))
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 )
                                 .child(
@@ -194,13 +201,13 @@ impl ChatArea {
                                         .p(px(6.))
                                         .rounded(px(4.))
                                         .cursor_pointer()
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("favorite.svg")
                                                 .w(px(20.))
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 )
                                 .child(
@@ -208,13 +215,13 @@ impl ChatArea {
                                         .p(px(6.))
                                         .rounded(px(4.))
                                         .cursor_pointer()
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("file.svg")
                                                 .w(px(20.))
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 )
                                 .child(
@@ -222,13 +229,13 @@ impl ChatArea {
                                         .p(px(6.))
                                         .rounded(px(4.))
                                         .cursor_pointer()
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("scissors.svg")
                                                 .w(px(20.))
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 )
                                 .child(
@@ -239,13 +246,13 @@ impl ChatArea {
                                         .items_center()
                                         .cursor_pointer()
                                         .w(px(15.))
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("down.svg")
                                                 .w(px(20.)) // 宽度为其他图标的一半
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 ),
                         )
@@ -262,13 +269,13 @@ impl ChatArea {
                                         .p(px(6.))
                                         .rounded(px(4.))
                                         .cursor_pointer()
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("circle.svg")
                                                 .w(px(20.))
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 )
                                 .child(
@@ -276,13 +283,13 @@ impl ChatArea {
                                         .p(px(6.))
                                         .rounded(px(4.))
                                         .cursor_pointer()
-                                        .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                                        .hover(|this| this.bg(theme.secondary))
                                         .child(
                                             Icon::default()
                                                 .path("video-call.svg")
                                                 .w(px(20.))
                                                 .h(px(20.))
-                                                .text_color(theme.colors.toolbar_icon_normal),
+                                                .text_color(theme.muted_foreground),
                                         ),
                                 ),
                         ),
@@ -343,10 +350,41 @@ impl ChatArea {
 }
 
 impl Render for ChatArea {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
+        let no_session_text_color = theme.muted_foreground;
+        let border_color = theme.border;
+        let bg_color = weixin_colors.chat_area_bg; // 右侧聊天区域背景 EDEDED
+
+        let messages_view = if let Some(session) = &self.current_session {
+            v_flex()
+                .w_full()
+                .pt_4()
+                .pb_2()
+                .children(
+                    session
+                        .messages
+                        .iter()
+                        .map(|msg| self.render_message(msg, cx)),
+                )
+                .into_any_element()
+        } else {
+            div()
+                .size_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_color(no_session_text_color)
+                .text_base()
+                .child("请选择一个会话开始聊天")
+                .into_any_element()
+        };
+
         // 主聊天区域：顶部消息列表，分隔条，底部固定高输入区
         v_flex()
             .flex_1()
+            .bg(bg_color)
             // 捕获全局鼠标事件以在拖拽时更新高度
             .on_mouse_up(
                 gpui::MouseButton::Left,
@@ -367,31 +405,11 @@ impl Render for ChatArea {
                     .id("chat-messages")
                     .flex_1()
                     .w_full()
+                    .bg(bg_color) // 聊天消息区域背景 EDEDED
                     .overflow_y_scroll()
                     .border_t_1()
-                    .border_color(rgb(0xD5D5D5))
-                    .when_some(self.current_session.as_ref(), |this, session| {
-                        this.child(
-                            v_flex().w_full().pt_4().pb_2().children(
-                                session
-                                    .messages
-                                    .iter()
-                                    .map(|msg| self.render_message(msg, cx)),
-                            ),
-                        )
-                    })
-                    .when(self.current_session.is_none(), |this| {
-                        this.child(
-                            div()
-                                .size_full()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .text_color(rgb(0xb3b3b3))
-                                .text_base()
-                                .child("请选择一个会话开始聊天"),
-                        )
-                    }),
+                    .border_color(border_color)
+                    .child(messages_view),
             )
             .child(
                 // 分隔条：用于拖拽调整输入区高度（外层加大检测区域）
@@ -399,7 +417,7 @@ impl Render for ChatArea {
                     .h(px(8.)) // 较大的检测区域
                     .w_full()
                     .flex()
-                    .bg(gpui::rgb(0xEDEDED))
+                    .bg(bg_color)
                     .items_center()
                     .cursor_n_resize()
                     .on_mouse_down(
@@ -411,7 +429,7 @@ impl Render for ChatArea {
                     )
                     .child(
                         // 内层实际显示的1px分割线
-                        div().h(px(1.)).w_full().bg(rgb(0xD5D5D5)),
+                        div().h(px(1.)).w_full().bg(border_color),
                     ),
             )
             .child(
@@ -419,6 +437,7 @@ impl Render for ChatArea {
                 div()
                     .h(self.current_input_height)
                     .w_full()
+                    .bg(bg_color) // 输入区域背景 EDEDED
                     .child(self.render_input_area(cx)),
             )
     }

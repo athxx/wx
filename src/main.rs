@@ -20,9 +20,6 @@ fn main() {
     app.run(move |cx| {
         gpui_component::init(cx);
 
-        // 初始化默认主题（亮色）
-        Theme::set(Theme::light(), cx);
-
         cx.activate(true);
 
         let window_size = Size {

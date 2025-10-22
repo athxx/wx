@@ -9,10 +9,10 @@ use gpui_component::{
     divider::Divider,
     h_flex,
     popover::{Popover, PopoverContent},
-    v_flex, ContextModal, Icon, IconName, Sizable,
+    v_flex, ActiveTheme, ContextModal, Icon, IconName, Sizable,
 };
 
-use crate::theme::Theme;
+use crate::theme::{Theme, WeixinThemeColors};
 use serde::Deserialize;
 
 use crate::models::ToolbarItem;
@@ -68,7 +68,8 @@ impl ToolBar {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let is_active = self.active_item == item;
-        let theme = Theme::get(cx);
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
 
         // 根据是否激活和是否有fill版本决定图标路径
         let icon_path = if is_active {
@@ -79,9 +80,9 @@ impl ToolBar {
 
         // 只有带fill的图标在激活时才变绿色
         let icon_color = if is_active && item.has_fill() {
-            theme.colors.toolbar_icon_active
+            weixin_colors.weixin_green
         } else {
-            theme.colors.toolbar_icon_normal
+            theme.muted_foreground
         };
 
         div()
@@ -99,7 +100,7 @@ impl ToolBar {
                     .p(px(10.))
                     .rounded(px(6.))
                     .cursor_pointer()
-                    .hover(|this| this.bg(theme.colors.toolbar_active_bg))
+                    .hover(|this| this.bg(theme.secondary))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.active_item = item;
                         cx.emit(ToolbarClickEvent { item });
@@ -116,13 +117,13 @@ impl ToolBar {
     }
 
     fn render_phone_button(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
-
         // 为 phone 弹出菜单项创建 hover 状态（先创建再 clone，和 render_menu_button 一致）
         let phone_video_hovered =
             window.use_keyed_state("phone-video-call-hover", cx, |_, _| false);
         let phone_voice_hovered =
             window.use_keyed_state("phone-voice-call-hover", cx, |_, _| false);
+
+        let theme = cx.theme();
 
         // 外层 clone，供 content 闭包捕获
         let phone_video_hovered = phone_video_hovered.clone();
@@ -141,7 +142,7 @@ impl ToolBar {
                                 .path("phone.svg")
                                 .w(px(21.))
                                 .h(px(21.))
-                                .text_color(theme.colors.toolbar_icon_normal),
+                                .text_color(theme.muted_foreground),
                         ),
                 )
                 .content(move |window, cx| {
@@ -212,22 +213,20 @@ impl ToolBar {
             .rounded(px(4.))
             .cursor_pointer()
             .text_sm()
-            .when(hovered, |this| this.bg(rgb(0x07C160)))
+            .when(hovered, |this| this.bg(rgb(0x07C160))) // WeChat green - keep hardcoded
             .on_hover(move |&is_hovering, _, cx| {
                 set_hover(is_hovering, cx);
             })
             .on_mouse_down(gpui::MouseButton::Left, on_mouse_down)
             .child(
                 div()
-                    .when(hovered, |this| this.text_color(rgb(0xFFFFFF)))
-                    .when(!hovered, |this| this.text_color(rgb(0x000000)))
+                    .when(hovered, |this| this.text_color(gpui::white()))
+                    .when(!hovered, |this| this.text_color(gpui::black()))
                     .child(label),
             )
     }
 
     fn render_menu_button(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = Theme::get(cx);
-
         // 为每个菜单项创建 hover 状态
         let video_live_hovered = window.use_keyed_state("menu-video-live-hover", cx, |_, _| false);
         let chat_files_hovered = window.use_keyed_state("menu-chat-files-hover", cx, |_, _| false);
@@ -244,6 +243,8 @@ impl ToolBar {
         let lock_hovered = lock_hovered.clone();
         let feedback_hovered = feedback_hovered.clone();
         let settings_hovered = settings_hovered.clone();
+
+        let theme = cx.theme();
 
         div()
             .w_full()
@@ -264,10 +265,11 @@ impl ToolBar {
                                     .path("menu.svg")
                                     .w(px(21.))
                                     .h(px(21.))
-                                    .text_color(theme.colors.toolbar_icon_normal),
+                                    .text_color(theme.muted_foreground),
                             ),
                     )
                     .content(move |window, cx| {
+                        let theme_popover = cx.theme().popover;
                         let video_live_hovered = video_live_hovered.clone();
                         let chat_files_hovered = chat_files_hovered.clone();
                         let chat_history_hovered = chat_history_hovered.clone();
@@ -393,7 +395,7 @@ impl ToolBar {
                                     .into_any()
                             })
                             .p_1()
-                            .bg(rgb(0xFFFFFF))
+                            .bg(theme_popover)
                             .rounded(px(6.))
                             .shadow_md()
                         })
@@ -438,7 +440,10 @@ impl ToolBar {
 
 impl Render for ToolBar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let weixin_colors = Theme::weixin_colors(cx);
+
         v_flex()
+            .bg(weixin_colors.toolbar_bg) // 左侧工具栏背景 EDEDED
             .on_action(cx.listener(Self::on_settings))
             .on_action(cx.listener(Self::on_video_live))
             .on_action(cx.listener(Self::on_chat_files))
