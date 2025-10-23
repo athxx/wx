@@ -4,6 +4,8 @@ mod components;
 mod data;
 mod models;
 mod theme;
+mod domain;
+mod infra;
 
 use app::WeixinApp;
 use assets::Assets;

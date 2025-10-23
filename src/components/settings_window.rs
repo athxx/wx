@@ -1,6 +1,11 @@
 use crate::theme::{Theme, ThemeMode, WeixinThemeColors};
-use gpui::{prelude::FluentBuilder, *};
-use gpui_component::{button::Button, h_flex, v_flex, ActiveTheme, Icon, Sizable};
+use gpui::{prelude::FluentBuilder, DismissEvent, EventEmitter, *};
+use gpui_component::{
+    button::Button,
+    h_flex,
+    popover::{Popover, PopoverContent},
+    v_flex, ActiveTheme, ContextModal, Icon, Sizable,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SettingsTab {
@@ -12,10 +17,21 @@ enum SettingsTab {
     About,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum FontSize {
+    Small,
+    Standard,
+    Large,
+}
+
 pub struct SettingsWindow {
-    active_tab: SettingsTab,
+    active_tab_ix: usize,
+    current_language: String,
+    current_font_size: FontSize,
     _theme_observer: Option<gpui::Subscription>,
 }
+
+impl EventEmitter<DismissEvent> for SettingsWindow {}
 
 impl SettingsWindow {
     pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -25,7 +41,9 @@ impl SettingsWindow {
         });
 
         Self {
-            active_tab: SettingsTab::General,
+            active_tab_ix: 1, // General tab
+            current_language: "简体中文".to_string(),
+            current_font_size: FontSize::Standard,
             _theme_observer: Some(theme_observer),
         }
     }
@@ -34,56 +52,29 @@ impl SettingsWindow {
         cx.new(|cx| Self::new(window, cx))
     }
 
-    fn render_sidebar_item(
-        &self,
-        tab: SettingsTab,
-        label: &'static str,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let is_active = self.active_tab == tab;
-        let theme = cx.theme();
-
-        let tab_id = match tab {
-            SettingsTab::AccountAndStorage => "tab-account",
-            SettingsTab::General => "tab-general",
-            SettingsTab::Shortcuts => "tab-shortcuts",
-            SettingsTab::Notifications => "tab-notifications",
-            SettingsTab::Plugins => "tab-plugins",
-            SettingsTab::About => "tab-about",
-        };
-
-        div()
-            .id(tab_id)
-            .w_full()
-            .px_4()
-            .py_3()
-            .cursor_pointer()
-            .rounded(px(4.))
-            .bg(if is_active {
-                theme.secondary
-            } else {
-                theme.transparent
-            })
-            .hover(move |s| {
-                if is_active {
-                    s
-                } else {
-                    s.bg(theme.secondary_hover)
-                }
-            })
-            .on_click(cx.listener(move |this, _ev, _window, cx| {
-                this.active_tab = tab;
-                cx.notify();
-            }))
-            .child(div().text_sm().text_color(theme.foreground).child(label))
+    fn get_active_tab(&self) -> SettingsTab {
+        match self.active_tab_ix {
+            0 => SettingsTab::AccountAndStorage,
+            1 => SettingsTab::General,
+            2 => SettingsTab::Shortcuts,
+            3 => SettingsTab::Notifications,
+            4 => SettingsTab::Plugins,
+            5 => SettingsTab::About,
+            _ => SettingsTab::General,
+        }
     }
 
-    fn render_content(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
-        match self.active_tab {
+    fn set_active_tab(&mut self, ix: usize, _: &mut Window, cx: &mut Context<Self>) {
+        self.active_tab_ix = ix;
+        cx.notify();
+    }
+
+    fn render_content(&self, window: &mut Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+        match self.get_active_tab() {
             SettingsTab::AccountAndStorage => {
                 self.render_account_and_storage(cx).into_any_element()
             }
-            SettingsTab::General => self.render_general_settings(cx).into_any_element(),
+            SettingsTab::General => self.render_general_settings(window, cx).into_any_element(),
             SettingsTab::Shortcuts => self.render_shortcuts(cx).into_any_element(),
             SettingsTab::Notifications => self.render_notifications(cx).into_any_element(),
             SettingsTab::Plugins => self.render_plugins(cx).into_any_element(),
@@ -196,76 +187,63 @@ impl SettingsWindow {
             )
     }
 
-    fn render_general_settings(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_general_settings(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let theme_mode = cx.theme().mode;
-        let foreground = cx.theme().foreground;
-        let secondary = cx.theme().secondary;
-        let secondary_hover = cx.theme().secondary_hover;
-        let muted_foreground = cx.theme().muted_foreground;
+        let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
+        let foreground = theme.foreground;
+
+        let card_bg = weixin_colors.session_list_bg; // F7F7F7 / 深色下为 1F1F1F
+        let border_color = theme.border;
 
         v_flex()
             .gap_6()
+            // 语言设置 Card
             .child(
                 div()
-                    .text_lg()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(foreground)
-                    .child("通用"),
-            )
-            .child(
-                v_flex()
-                    .gap_4()
-                    .child(self.render_setting_row("开机时自动启动微信", true, cx))
-                    .child(self.render_setting_row("登录后自动打开文件传输助手", false, cx))
-                    .child(self.render_setting_row("保持在其他窗口前端", false, cx))
-                    .child(self.render_setting_row("使用系统默认浏览器打开网页", true, cx)),
-            )
-            .child(self.render_theme_setting(theme_mode, cx))
-            .child(
-                v_flex()
-                    .gap_3()
-                    .child(
-                        div()
-                            .text_base()
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(foreground)
-                            .child("语言"),
-                    )
+                    .bg(card_bg)
+                    .rounded(px(8.))
+                    .border_1()
+                    .border_color(border_color)
+                    .p_4()
                     .child(
                         h_flex()
                             .items_center()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(muted_foreground)
-                                    .child("简体中文"),
-                            )
-                            .child(
-                                div()
-                                    .px_2()
-                                    .py_1()
-                                    .rounded(px(4.))
-                                    .bg(secondary)
-                                    .cursor_pointer()
-                                    .hover(move |s| s.bg(secondary_hover))
-                                    .child(div().text_xs().text_color(foreground).child("更改")),
-                            ),
+                            .justify_between()
+                            .py_2()
+                            .child(div().text_sm().text_color(foreground).child("语言"))
+                            .child(self.render_language_button(window, cx)),
                     ),
             )
+            // 外观和字体大小设置 Card
             .child(
-                // 添加查看图片按钮示例
-                v_flex()
-                    .gap_3()
+                div()
+                    .bg(card_bg)
+                    .rounded(px(8.))
+                    .border_1()
+                    .border_color(border_color)
+                    .p_4()
                     .child(
-                        div()
-                            .text_base()
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(foreground)
-                            .child("示例按钮"),
-                    )
-                    .child(self.render_arrow_button("查看图片", cx)),
+                        v_flex()
+                            .gap_4()
+                            // 外观设置
+                            .child(self.render_theme_setting(theme_mode, window, cx))
+                            // 分割线
+                            .child(div().w_full().h(px(1.)).bg(border_color))
+                            // 字体大小设置
+                            .child(
+                                h_flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .py_2()
+                                    .child(div().text_sm().text_color(foreground).child("字体大小"))
+                                    .child(self.render_font_size_button(window, cx)),
+                            ),
+                    ),
             )
     }
 
@@ -395,90 +373,163 @@ impl SettingsWindow {
     fn render_theme_setting(
         &self,
         current_mode: ThemeMode,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let theme = cx.theme();
+        let foreground = theme.foreground;
 
-        v_flex()
-            .gap_3()
-            .child(
-                div()
-                    .text_base()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.foreground)
-                    .child("外观"),
-            )
-            .child(
-                h_flex()
-                    .items_center()
-                    .justify_between()
-                    .py_2()
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(theme.foreground)
-                            .child("主题模式"),
-                    )
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .child(self.render_theme_button(
-                                ThemeMode::Light,
-                                "浅色",
-                                current_mode,
-                                cx,
-                            ))
-                            .child(self.render_theme_button(
-                                ThemeMode::Dark,
-                                "深色",
-                                current_mode,
-                                cx,
-                            )),
-                    ),
-            )
+        h_flex()
+            .items_center()
+            .justify_between()
+            .py_2()
+            .child(div().text_sm().text_color(foreground).child("外观"))
+            .child(self.render_theme_button(current_mode, window, cx))
     }
 
     fn render_theme_button(
         &self,
-        mode: ThemeMode,
-        label: &'static str,
         current_mode: ThemeMode,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let is_active = current_mode == mode;
-        let btn_id = match mode {
-            ThemeMode::Light => "theme-btn-light",
-            ThemeMode::Dark => "theme-btn-dark",
-        };
-        let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
 
+        // 创建 hover 状态
+        let light_hovered = window.use_keyed_state("theme-light-hover", cx, |_, _| false);
+        let dark_hovered = window.use_keyed_state("theme-dark-hover", cx, |_, _| false);
+
+        let light_hovered = light_hovered.clone();
+        let dark_hovered = dark_hovered.clone();
+
+        Popover::new("theme-popover")
+            .anchor(gpui::Corner::BottomLeft)
+            .trigger(
+                Button::new("theme-btn").xsmall().outline().child(
+                    h_flex()
+                        .items_center()
+                        .gap_2()
+                        .text_xs()
+                        .child(match current_mode {
+                            ThemeMode::Light => "浅色",
+                            ThemeMode::Dark => "深色",
+                        })
+                        .child(
+                            div()
+                                .p(px(1.5))
+                                .rounded_sm()
+                                .bg(weixin_colors.weixin_green)
+                                .child(
+                                    Icon::default()
+                                        .path("arrow.svg")
+                                        .text_color(gpui::rgb(0xffffff)),
+                                ),
+                        ),
+                ),
+            )
+            .content(move |window, cx| {
+                let theme_popover = cx.theme().popover;
+                let light_hovered = light_hovered.clone();
+                let dark_hovered = dark_hovered.clone();
+
+                cx.new(|cx| {
+                    PopoverContent::new(window, cx, move |_, cx| {
+                        let theme = cx.theme();
+
+                        v_flex()
+                            .w(px(100.))
+                            .gap_0()
+                            .py_2()
+                            .text_color(theme.foreground)
+                            .child({
+                                let hovered = *light_hovered.read(cx);
+                                let state = light_hovered.clone();
+                                Self::render_static_theme_item(
+                                    "theme-light",
+                                    "浅色",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        Theme::set_light(cx);
+                                        cx.refresh_windows();
+                                        window.push_notification("切换到浅色主题", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .child({
+                                let hovered = *dark_hovered.read(cx);
+                                let state = dark_hovered.clone();
+                                Self::render_static_theme_item(
+                                    "theme-dark",
+                                    "深色",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        Theme::set_dark(cx);
+                                        cx.refresh_windows();
+                                        window.push_notification("切换到深色主题", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .into_any()
+                    })
+                    .p_1()
+                    .bg(theme_popover)
+                    .rounded(px(6.))
+                    .shadow_md()
+                })
+            })
+    }
+
+    fn render_static_theme_item<FSet, L>(
+        id: &'static str,
+        label: &'static str,
+        hovered: bool,
+        set_hover: FSet,
+        on_mouse_down: L,
+    ) -> impl IntoElement
+    where
+        FSet: Fn(bool, &mut App) + Clone + 'static,
+        L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
+    {
+        Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
+    }
+
+    fn render_static_select_item<FSet, L>(
+        id: &'static str,
+        label: &'static str,
+        hovered: bool,
+        set_hover: FSet,
+        on_mouse_down: L,
+    ) -> impl IntoElement
+    where
+        FSet: Fn(bool, &mut App) + Clone + 'static,
+        L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
+    {
         div()
-            .id(btn_id)
+            .id(id)
+            .w_full()
             .px_3()
-            .py_1()
+            .py_2()
             .rounded(px(4.))
             .cursor_pointer()
-            .when(is_active, |this| {
-                this.bg(weixin_colors.weixin_green)
-                    .text_color(theme.primary_foreground)
+            .text_sm()
+            .when(hovered, |this| this.bg(rgb(0x07C160)))
+            .on_hover(move |&is_hovering, _, cx| {
+                set_hover(is_hovering, cx);
             })
-            .when(!is_active, |this| {
-                this.bg(theme.secondary).text_color(theme.foreground)
-            })
-            .hover(|s| {
-                s.bg(weixin_colors.weixin_green_hover)
-                    .text_color(theme.primary_foreground)
-            })
-            .on_click(cx.listener(move |_this, _ev, _window, cx| {
-                match mode {
-                    ThemeMode::Light => Theme::set_light(cx),
-                    ThemeMode::Dark => Theme::set_dark(cx),
-                }
-                // 通知所有窗口主题已更改
-                cx.refresh_windows();
-            }))
-            .child(div().text_xs().child(label))
+            .on_mouse_down(gpui::MouseButton::Left, on_mouse_down)
+            .child(
+                div()
+                    .when(hovered, |this| this.text_color(gpui::white()))
+                    .child(label),
+            )
     }
 
     fn render_setting_row(
@@ -522,7 +573,7 @@ impl SettingsWindow {
 
     fn render_arrow_button(&self, label: &'static str, cx: &Context<Self>) -> impl IntoElement {
         let weixin_colors = Theme::weixin_colors(cx);
-        Button::new("button-icon-4")
+        Button::new(label)
             .xsmall()
             .outline()
             .child(
@@ -547,6 +598,303 @@ impl SettingsWindow {
                 // 这里可以添加按钮点击的逻辑
                 println!("查看图片按钮被点击");
             }))
+    }
+
+    fn render_static_language_item<FSet, L>(
+        id: &'static str,
+        label: &'static str,
+        hovered: bool,
+        set_hover: FSet,
+        on_mouse_down: L,
+    ) -> impl IntoElement
+    where
+        FSet: Fn(bool, &mut App) + Clone + 'static,
+        L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
+    {
+        Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
+    }
+
+    fn render_static_font_item<FSet, L>(
+        id: &'static str,
+        label: &'static str,
+        hovered: bool,
+        set_hover: FSet,
+        on_mouse_down: L,
+    ) -> impl IntoElement
+    where
+        FSet: Fn(bool, &mut App) + Clone + 'static,
+        L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
+    {
+        Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
+    }
+
+    fn render_language_button(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let current_language = self.current_language.clone();
+        let weixin_colors = Theme::weixin_colors(cx);
+
+        // 创建 hover 状态
+        let chinese_hovered = window.use_keyed_state("lang-chinese-hover", cx, |_, _| false);
+        let traditional_hovered =
+            window.use_keyed_state("lang-traditional-hover", cx, |_, _| false);
+        let english_hovered = window.use_keyed_state("lang-english-hover", cx, |_, _| false);
+
+        let chinese_hovered = chinese_hovered.clone();
+        let traditional_hovered = traditional_hovered.clone();
+        let english_hovered = english_hovered.clone();
+
+        Popover::new("language-popover")
+            .anchor(gpui::Corner::BottomRight)
+            .trigger(
+                Button::new("language-btn").xsmall().outline().child(
+                    h_flex()
+                        .items_center()
+                        .gap_2()
+                        .text_xs()
+                        .child(current_language.clone())
+                        .child(
+                            div()
+                                .p(px(1.5))
+                                .rounded_sm()
+                                .bg(weixin_colors.weixin_green)
+                                .child(
+                                    Icon::default()
+                                        .path("arrow.svg")
+                                        .text_color(gpui::rgb(0xffffff)),
+                                ),
+                        ),
+                ),
+            )
+            .content(move |window, cx| {
+                let theme_popover = cx.theme().popover;
+                let chinese_hovered = chinese_hovered.clone();
+                let traditional_hovered = traditional_hovered.clone();
+                let english_hovered = english_hovered.clone();
+
+                cx.new(|cx| {
+                    PopoverContent::new(window, cx, move |_, cx| {
+                        let theme = cx.theme();
+
+                        v_flex()
+                            .w(px(120.))
+                            .gap_0()
+                            .py_2()
+                            .text_color(theme.foreground)
+                            .child({
+                                let hovered = *chinese_hovered.read(cx);
+                                let state = chinese_hovered.clone();
+                                Self::render_static_language_item(
+                                    "lang-chinese",
+                                    "简体中文",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        window.push_notification("语言切换功能开发中...", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .child({
+                                let hovered = *traditional_hovered.read(cx);
+                                let state = traditional_hovered.clone();
+                                Self::render_static_language_item(
+                                    "lang-traditional",
+                                    "繁體中文",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        window.push_notification("语言切换功能开发中...", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .child({
+                                let hovered = *english_hovered.read(cx);
+                                let state = english_hovered.clone();
+                                Self::render_static_language_item(
+                                    "lang-english",
+                                    "English",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        window.push_notification("语言切换功能开发中...", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .into_any()
+                    })
+                    .p_1()
+                    .bg(theme_popover)
+                    .rounded(px(6.))
+                    .shadow_md()
+                })
+            })
+    }
+
+    fn render_font_size_button(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let current_size = self.current_font_size;
+        let current_size_str = match current_size {
+            FontSize::Small => "小",
+            FontSize::Standard => "标准",
+            FontSize::Large => "大",
+        };
+        let weixin_colors = Theme::weixin_colors(cx);
+
+        // 创建 hover 状态
+        let small_hovered = window.use_keyed_state("font-small-hover", cx, |_, _| false);
+        let standard_hovered = window.use_keyed_state("font-standard-hover", cx, |_, _| false);
+        let large_hovered = window.use_keyed_state("font-large-hover", cx, |_, _| false);
+
+        let small_hovered = small_hovered.clone();
+        let standard_hovered = standard_hovered.clone();
+        let large_hovered = large_hovered.clone();
+
+        Popover::new("font-size-popover")
+            .anchor(gpui::Corner::BottomRight)
+            .trigger(
+                Button::new("font-size-btn").xsmall().outline().child(
+                    h_flex()
+                        .items_center()
+                        .gap_2()
+                        .text_xs()
+                        .child(current_size_str)
+                        .child(
+                            div()
+                                .p(px(1.5))
+                                .rounded_sm()
+                                .bg(weixin_colors.weixin_green)
+                                .child(
+                                    Icon::default()
+                                        .path("arrow.svg")
+                                        .text_color(gpui::rgb(0xffffff)),
+                                ),
+                        ),
+                ),
+            )
+            .content(move |window, cx| {
+                let theme_popover = cx.theme().popover;
+                let small_hovered = small_hovered.clone();
+                let standard_hovered = standard_hovered.clone();
+                let large_hovered = large_hovered.clone();
+
+                cx.new(|cx| {
+                    PopoverContent::new(window, cx, move |_, cx| {
+                        let theme = cx.theme();
+
+                        v_flex()
+                            .w(px(100.))
+                            .gap_0()
+                            .py_2()
+                            .text_color(theme.foreground)
+                            .child({
+                                let hovered = *small_hovered.read(cx);
+                                let state = small_hovered.clone();
+                                Self::render_static_font_item(
+                                    "font-small",
+                                    "小",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        window.push_notification("字体大小设置功能开发中...", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .child({
+                                let hovered = *standard_hovered.read(cx);
+                                let state = standard_hovered.clone();
+                                Self::render_static_font_item(
+                                    "font-standard",
+                                    "标准",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        window.push_notification("字体大小设置功能开发中...", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .child({
+                                let hovered = *large_hovered.read(cx);
+                                let state = large_hovered.clone();
+                                Self::render_static_font_item(
+                                    "font-large",
+                                    "大",
+                                    hovered,
+                                    move |is_hovering, cx| {
+                                        state.update(cx, |s, _| *s = is_hovering);
+                                    },
+                                    cx.listener(|_, _, window, cx| {
+                                        window.push_notification("字体大小设置功能开发中...", cx);
+                                        cx.emit(DismissEvent);
+                                    }),
+                                )
+                            })
+                            .into_any()
+                    })
+                    .p_1()
+                    .bg(theme_popover)
+                    .rounded(px(6.))
+                    .shadow_md()
+                })
+            })
+    }
+
+    fn render_tab_item(
+        &self,
+        ix: usize,
+        label: &'static str,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let weixin_colors = Theme::weixin_colors(cx);
+        let theme = cx.theme();
+        let is_active = self.active_tab_ix == ix;
+        let active_bg = weixin_colors.item_selected; // DEDEDE / 深色下为 3A3A3A
+        let hover_bg = weixin_colors.item_hover; // EAEAEA / 深色下为 333333
+        let transparent_bg = gpui::transparent_black();
+        let text_color = theme.foreground;
+
+        let tab_id = match ix {
+            0 => "tab-0",
+            1 => "tab-1",
+            2 => "tab-2",
+            3 => "tab-3",
+            4 => "tab-4",
+            5 => "tab-5",
+            _ => "tab-unknown",
+        };
+
+        div()
+            .id(tab_id)
+            .w_full()
+            .px_4()
+            .py_3()
+            .cursor_pointer()
+            .rounded(px(4.))
+            .bg(if is_active { active_bg } else { transparent_bg })
+            .hover(move |s| if is_active { s } else { s.bg(hover_bg) })
+            .on_click(cx.listener(move |this, _ev, _window, cx| {
+                this.set_active_tab(ix, _window, cx);
+            }))
+            .child(div().text_sm().text_color(text_color).child(label))
     }
 
     fn render_toggle(&self, enabled: bool) -> impl IntoElement {
@@ -575,85 +923,97 @@ impl SettingsWindow {
 
 impl Render for SettingsWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let weixin_colors = Theme::weixin_colors(cx);
         let theme = cx.theme();
-        let panel_bg = theme.secondary;
         let close_hover = rgb(0xe81123);
         let text_color = theme.foreground;
-        let background = theme.background;
+        let left_bg = weixin_colors.session_list_bg; // 左侧背景色 (F7F7F7)
+        let right_bg = weixin_colors.chat_area_bg; // 右侧背景色 (EDEDED)
+        let border_color = theme.border; // 分割线颜色
 
-        v_flex()
+        h_flex()
             .size_full()
-            .bg(panel_bg)
             .child(
-                // 自定义标题栏
-                h_flex()
-                    .w_full()
-                    .h(px(48.))
-                    .bg(panel_bg)
-                    .items_center()
+                // 左侧区域（包括标题栏和导航栏）
+                v_flex()
+                    .w(px(200.))
+                    .h_full()
+                    .bg(left_bg)
+                    .border_r_1()
+                    .border_color(border_color)
                     .child(
-                        // 可拖动区域
+                        // 左侧标题栏区域
                         div()
                             .window_control_area(WindowControlArea::Drag)
-                            .flex_1()
-                            .h_full()
+                            .w_full()
+                            .h(px(48.))
                             .flex()
                             .items_center()
                             .px_4(),
                     )
                     .child(
-                        // 关闭按钮
-                        div()
-                            .id("settings-close-btn")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .h_full()
-                            .w(px(48.))
-                            .window_control_area(WindowControlArea::Close)
-                            .cursor_pointer()
-                            .hover(move |s| s.bg(close_hover).text_color(gpui::white()))
-                            .child(
-                                Icon::default()
-                                    .path("window-close.svg")
-                                    .text_color(text_color)
-                                    .small(),
-                            ),
+                        // 导航栏
+                        v_flex()
+                            .flex_1()
+                            .w_full()
+                            .py_4()
+                            .px_3()
+                            .gap_1()
+                            .child(self.render_tab_item(0, "账号与存储", cx))
+                            .child(self.render_tab_item(1, "通用", cx))
+                            .child(self.render_tab_item(2, "快捷键", cx))
+                            .child(self.render_tab_item(3, "通知", cx))
+                            .child(self.render_tab_item(4, "插件", cx))
+                            .child(self.render_tab_item(5, "关于微信", cx)),
                     ),
             )
             .child(
-                h_flex()
+                // 右侧区域（包括标题栏和内容）
+                v_flex()
                     .flex_1()
-                    .w_full()
-                    .overflow_hidden()
+                    .h_full()
+                    .bg(right_bg)
                     .child(
-                        // 左侧导航栏
-                        v_flex()
-                            .w(px(180.))
-                            .h_full()
-                            .bg(panel_bg)
-                            .py_4()
-                            .gap_1()
-                            .child(self.render_sidebar_item(
-                                SettingsTab::AccountAndStorage,
-                                "账号与存储",
-                                cx,
-                            ))
-                            .child(self.render_sidebar_item(SettingsTab::General, "通用", cx))
-                            .child(self.render_sidebar_item(SettingsTab::Shortcuts, "快捷键", cx))
-                            .child(self.render_sidebar_item(SettingsTab::Notifications, "通知", cx))
-                            .child(self.render_sidebar_item(SettingsTab::Plugins, "插件", cx))
-                            .child(self.render_sidebar_item(SettingsTab::About, "关于微信", cx)),
+                        // 右侧标题栏
+                        h_flex()
+                            .w_full()
+                            .h(px(48.))
+                            .items_center()
+                            .child(
+                                // 可拖动区域
+                                div()
+                                    .window_control_area(WindowControlArea::Drag)
+                                    .flex_1()
+                                    .h_full(),
+                            )
+                            .child(
+                                // 关闭按钮
+                                div()
+                                    .id("settings-close-btn")
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .h_full()
+                                    .w(px(48.))
+                                    .window_control_area(WindowControlArea::Close)
+                                    .cursor_pointer()
+                                    .hover(move |s| s.bg(close_hover).text_color(gpui::white()))
+                                    .child(
+                                        Icon::default()
+                                            .path("window-close.svg")
+                                            .text_color(text_color)
+                                            .small(),
+                                    ),
+                            ),
                     )
                     .child(
-                        // 右侧内容区
+                        // 内容区域
                         v_flex()
                             .flex_1()
-                            .h_full()
-                            .bg(background)
+                            .w_full()
                             .p_6()
                             .overflow_hidden()
-                            .child(self.render_content(cx)),
+                            .child(self.render_content(_window, cx)),
                     ),
             )
     }

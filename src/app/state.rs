@@ -1,5 +1,6 @@
 use crate::components::{ChatArea, SessionList, ToolBar};
-use crate::data::sample_data;
+use crate::domain::repos::{ContactsRepo, SessionsRepo};
+use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
 use crate::theme::Theme;
 use gpui::{App, AppContext, Context, Entity, Window};
@@ -11,6 +12,10 @@ pub struct WeixinApp {
     pub toolbar: Entity<ToolBar>,
     pub session_list: Entity<SessionList>,
     pub chat_area: Entity<ChatArea>,
+
+    // 数据仓库
+    contacts_repo: Box<dyn ContactsRepo>,
+    sessions_repo: Box<dyn SessionsRepo>,
 
     // 数据状态
     pub contacts: Vec<Contact>,
@@ -26,8 +31,12 @@ pub struct WeixinApp {
 impl WeixinApp {
     /// 创建新的应用实例
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        // 创建示例联系人数据
-        let contacts = sample_data::create_sample_contacts();
+        // 仓库实现（当前为内存版，内部仍调用 sample_data）
+        let contacts_repo: Box<dyn ContactsRepo> = Box::new(MemoryContactsRepo::new());
+        let sessions_repo: Box<dyn SessionsRepo> = Box::new(MemorySessionsRepo::new());
+
+        // 读取联系人数据
+        let contacts = contacts_repo.get_all();
 
         // 创建各个视图组件
         let toolbar = ToolBar::view(window, cx);
@@ -54,6 +63,8 @@ impl WeixinApp {
             toolbar,
             session_list,
             chat_area,
+            contacts_repo,
+            sessions_repo,
             contacts,
             current_session: None,
             session_resizable_state,
@@ -72,8 +83,8 @@ impl WeixinApp {
             // 创建或获取聊天会话
             let mut session = ChatSession::new(contact.clone());
 
-            // 添加示例消息
-            session.messages = sample_data::create_sample_messages(&contact);
+            // 加载该联系人的消息（与原逻辑等价）
+            session.messages = self.sessions_repo.get_messages(&contact);
 
             self.current_session = Some(session.clone());
 

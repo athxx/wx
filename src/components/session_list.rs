@@ -105,13 +105,13 @@ impl SessionList {
             .border_l_1()
             .border_color(theme.border)
             .bg(if is_selected {
-                weixin_colors.item_selected  // 选中颜色 DEDEDE
+                weixin_colors.item_selected // 选中颜色 DEDEDE
             } else {
                 theme.transparent
             })
             .hover(move |style| {
                 if !is_selected {
-                    style.bg(weixin_colors.item_hover)  // hover颜色 EAEAEA
+                    style.bg(weixin_colors.item_hover) // hover颜色 EAEAEA
                 } else {
                     style
                 }
@@ -128,7 +128,8 @@ impl SessionList {
                 h_flex()
                     .w_full()
                     .gap_3()
-                    .items_start()
+                    .items_center()
+                    .justify_center()
                     .child(
                         // 头像 - 群组或个人，带未读徽章
                         div()
@@ -146,10 +147,11 @@ impl SessionList {
                                         })
                                         .when(!contact.is_group, |badge| {
                                             badge.child(
-                                                div()
-                                                    .rounded(px(4.))
-                                                    .overflow_hidden()
-                                                    .child(Avatar::new().with_size(px(46.))),
+                                                div().rounded(px(4.)).overflow_hidden().child(
+                                                    Avatar::new()
+                                                        .rounded(px(4.))
+                                                        .with_size(px(43.)),
+                                                ),
                                             )
                                         }),
                                 )
@@ -159,12 +161,7 @@ impl SessionList {
                                     div_.child(GroupAvatar::new(contact.avatar_members.clone()))
                                 })
                                 .when(!contact.is_group, |div_| {
-                                    div_.child(
-                                        div()
-                                            .rounded(px(4.))
-                                            .overflow_hidden()
-                                            .child(Avatar::new().with_size(px(46.))),
-                                    )
+                                    div_.child(Avatar::new().rounded(px(4.)).with_size(px(43.)))
                                 })
                             }),
                     )
@@ -190,6 +187,7 @@ impl SessionList {
                                             .overflow_hidden()
                                             .whitespace_nowrap()
                                             .text_ellipsis()
+                                            .text_sm()
                                             .child(if contact.is_group {
                                                 if let Some(count) = contact.member_count {
                                                     format!("{} ({})", contact.name, count)
@@ -243,11 +241,11 @@ impl Render for SessionList {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
-        
+
         v_flex()
             .w_full()
             .h_full()
-            .bg(weixin_colors.session_list_bg)  // 中间会话列表背景 F7F7F7
+            .bg(weixin_colors.session_list_bg) // 中间会话列表背景 F7F7F7
             // .border_r_1()
             .border_color(theme.border)
             .child(

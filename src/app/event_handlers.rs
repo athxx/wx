@@ -1,8 +1,7 @@
 use crate::app::state::WeixinApp;
-use crate::components::session_list::SessionSelectEvent;
 use crate::components::settings_window::SettingsWindow;
-use crate::components::toolbar::{OpenSettingsEvent, ToolbarClickEvent};
 use crate::components::{SessionList, ToolBar};
+use crate::domain::events::{OpenSettingsEvent, SessionSelectEvent, ToolbarClickEvent};
 use gpui::{
     px, App, AppContext, Bounds, Context, Entity, Size, Window, WindowBounds, WindowKind,
     WindowOptions,

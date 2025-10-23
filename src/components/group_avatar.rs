@@ -1,5 +1,5 @@
 use gpui::{div, px, App, IntoElement, ParentElement, Pixels, RenderOnce, Styled, Window};
-use gpui_component::{ActiveTheme, avatar::Avatar, Sizable};
+use gpui_component::{avatar::Avatar, ActiveTheme, Sizable};
 
 /// 群组头像组件 - 显示2x2网格的成员头像
 #[derive(IntoElement)]
@@ -12,7 +12,7 @@ impl GroupAvatar {
     pub fn new(members: Vec<String>) -> Self {
         Self {
             members: members.into_iter().take(4).collect(),
-            size: px(46.),
+            size: px(43.),
         }
     }
 
@@ -48,25 +48,25 @@ impl RenderOnce for GroupAvatar {
                         // 左上
                         div()
                             .size(half_size)
-                            .child(Avatar::new().name(&members[0]).small()),
+                            .child(Avatar::new().name(&members[0]).xsmall()),
                     )
                     .child(
                         // 右上
                         div()
                             .size(half_size)
-                            .child(Avatar::new().name(&members[1]).small()),
+                            .child(Avatar::new().name(&members[1]).xsmall()),
                     )
                     .child(
                         // 左下
                         div()
                             .size(half_size)
-                            .child(Avatar::new().name(&members[2]).small()),
+                            .child(Avatar::new().name(&members[2]).xsmall()),
                     )
                     .child(
                         // 右下
                         div()
                             .size(half_size)
-                            .child(Avatar::new().name(&members[3]).small()),
+                            .child(Avatar::new().name(&members[3]).xsmall()),
                     ),
             )
     }

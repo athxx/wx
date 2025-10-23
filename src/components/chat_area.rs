@@ -182,79 +182,11 @@ impl ChatArea {
                             // 左侧图标组
                             h_flex()
                                 .gap_2()
-                                .child(
-                                    div()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .cursor_pointer()
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("emoji.svg")
-                                                .w(px(20.))
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .cursor_pointer()
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("favorite.svg")
-                                                .w(px(20.))
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .cursor_pointer()
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("file.svg")
-                                                .w(px(20.))
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .cursor_pointer()
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("scissors.svg")
-                                                .w(px(20.))
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                )
-                                .child(
-                                    h_flex()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .justify_center()
-                                        .items_center()
-                                        .cursor_pointer()
-                                        .w(px(15.))
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("down.svg")
-                                                .w(px(20.)) // 宽度为其他图标的一半
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                ),
+                                .child(self.icon_button("emoji.svg", theme))
+                                .child(self.icon_button("favorite.svg", theme))
+                                .child(self.icon_button("file.svg", theme))
+                                .child(self.icon_button("scissors.svg", theme))
+                                .child(self.narrow_icon_button("down.svg", theme)),
                         )
                         .child(
                             // 中间空白区域
@@ -264,34 +196,8 @@ impl ChatArea {
                             // 右侧图标组
                             h_flex()
                                 .gap_2()
-                                .child(
-                                    div()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .cursor_pointer()
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("circle.svg")
-                                                .w(px(20.))
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                )
-                                .child(
-                                    div()
-                                        .p(px(6.))
-                                        .rounded(px(4.))
-                                        .cursor_pointer()
-                                        .hover(|this| this.bg(theme.secondary))
-                                        .child(
-                                            Icon::default()
-                                                .path("video-call.svg")
-                                                .w(px(20.))
-                                                .h(px(20.))
-                                                .text_color(theme.muted_foreground),
-                                        ),
-                                ),
+                                .child(self.icon_button("circle.svg", theme))
+                                .child(self.icon_button("video-call.svg", theme)),
                         ),
                 ),
             )
@@ -318,6 +224,43 @@ impl ChatArea {
                 ),
             )
             .into_any_element()
+    }
+
+    fn icon_button(&self, path: &'static str, theme: &gpui_component::Theme) -> impl IntoElement {
+        div()
+            .p(px(6.))
+            .rounded(px(4.))
+            .cursor_pointer()
+            .hover(|this| this.bg(theme.secondary))
+            .child(
+                Icon::default()
+                    .path(path)
+                    .w(px(20.))
+                    .h(px(20.))
+                    .text_color(theme.muted_foreground),
+            )
+    }
+
+    fn narrow_icon_button(
+        &self,
+        path: &'static str,
+        theme: &gpui_component::Theme,
+    ) -> impl IntoElement {
+        h_flex()
+            .p(px(6.))
+            .rounded(px(4.))
+            .justify_center()
+            .items_center()
+            .cursor_pointer()
+            .w(px(15.))
+            .hover(|this| this.bg(theme.secondary))
+            .child(
+                Icon::default()
+                    .path(path)
+                    .w(px(20.))
+                    .h(px(20.))
+                    .text_color(theme.muted_foreground),
+            )
     }
 }
 
