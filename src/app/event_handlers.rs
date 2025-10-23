@@ -8,13 +8,11 @@ use gpui::{
 use gpui_component::{Root, TitleBar};
 
 impl WeixinApp {
-    /// 设置事件订阅
     pub(super) fn setup_event_subscriptions(
         toolbar: &Entity<ToolBar>,
         session_list: &Entity<SessionList>,
         cx: &mut Context<Self>,
     ) {
-        // 订阅工具栏点击事件
         cx.subscribe(toolbar, |_this, _toolbar, event: &AppEvent, _cx| {
             if let AppEvent::ToolbarClicked { item } = event {
                 println!("Toolbar item clicked: {:?}", item);
@@ -22,7 +20,6 @@ impl WeixinApp {
         })
         .detach();
 
-        // 订阅会话选择事件
         cx.subscribe(session_list, |this, _list, event: &AppEvent, cx| {
             if let AppEvent::SessionSelected { contact_id } = event {
                 this.on_session_selected(contact_id, cx);
@@ -31,16 +28,14 @@ impl WeixinApp {
         .detach();
     }
 
-    /// 打开设置窗口
     pub fn open_settings_window(cx: &mut App) {
         use crate::components::settings::window::SETTINGS_WINDOW_OPEN;
         use std::sync::atomic::Ordering;
 
-        // 若已打开则直接返回
         if SETTINGS_WINDOW_OPEN.load(Ordering::SeqCst) {
             return;
         }
-        // 标记为已打开（在 SettingsWindow Drop 时会复位）
+
         SETTINGS_WINDOW_OPEN.store(true, Ordering::SeqCst);
 
         let window_size = Size {

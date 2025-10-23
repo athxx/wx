@@ -77,13 +77,13 @@ impl SessionList {
             .border_l_1()
             .border_color(theme.border)
             .bg(if is_selected {
-                weixin_colors.item_selected // 选中颜色 DEDEDE
+                weixin_colors.item_selected
             } else {
                 theme.transparent
             })
             .hover(move |style| {
                 if !is_selected {
-                    style.bg(weixin_colors.item_hover) // hover颜色 EAEAEA
+                    style.bg(weixin_colors.item_hover)
                 } else {
                     style
                 }
@@ -112,11 +112,9 @@ impl Render for SessionList {
         v_flex()
             .w_full()
             .h_full()
-            .bg(weixin_colors.session_list_bg) // 中间会话列表背景 F7F7F7
-            // .border_r_1()
+            .bg(weixin_colors.session_list_bg)
             .border_color(theme.border)
             .child(
-                // 会话列表 - 搜索栏已移到 TitleBar
                 div()
                     .id("session-list-scroll")
                     .size_full()

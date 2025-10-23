@@ -1,5 +1,5 @@
-use gpui::{div, InteractiveElement, IntoElement, ParentElement, Styled, WindowControlArea, App};
-use gpui_component::{h_flex, input::InputState, ActiveTheme, Icon, Sizable, input::TextInput};
+use gpui::{div, App, InteractiveElement, IntoElement, ParentElement, Styled, WindowControlArea};
+use gpui_component::{h_flex, input::InputState, input::TextInput, ActiveTheme, Icon, Sizable};
 
 pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl IntoElement {
     let theme = cx.theme();
@@ -19,7 +19,7 @@ pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl In
             div()
                 .flex_1()
                 .bg(weixin_colors.search_bar_bg)
-.rounded(crate::ui::constants::radius_sm())
+                .rounded(crate::ui::constants::radius_sm())
                 .py_1()
                 .child(
                     TextInput::new(search_input)
@@ -40,7 +40,7 @@ pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl In
         .child(
             h_flex()
                 .bg(weixin_colors.search_bar_bg)
-.rounded(crate::ui::constants::radius_sm())
+                .rounded(crate::ui::constants::radius_sm())
                 .w(crate::ui::constants::search_plus_button_size())
                 .h(crate::ui::constants::search_plus_button_size())
                 .justify_center()
@@ -49,8 +49,8 @@ pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl In
                 .child(
                     Icon::default()
                         .path("plus.svg")
-.w(crate::ui::constants::icon_xs())
-.h(crate::ui::constants::icon_xs())
+                        .w(crate::ui::constants::icon_xs())
+                        .h(crate::ui::constants::icon_xs())
                         .text_color(theme.foreground),
                 ),
         )

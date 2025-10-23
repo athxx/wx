@@ -13,7 +13,6 @@ use gpui_component::{
 
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // 不设置整体背景，让各个区域自己设置
         let notification_layer = gpui_component::Root::render_notification_layer(window, cx);
         v_flex()
             .size_full()
@@ -24,7 +23,6 @@ impl Render for WeixinApp {
 }
 
 impl WeixinApp {
-    /// 渲染标题栏
     fn render_title_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::constants as UI;
         let current_chat_title = self.get_current_chat_title();
@@ -56,7 +54,6 @@ impl WeixinApp {
             )
     }
 
-    /// 渲染用户头像
     fn render_user_avatar(&self, cx: &Context<Self>) -> impl IntoElement {
         use crate::ui::constants as UI;
         let weixin_colors = Theme::weixin_colors(cx);
@@ -64,7 +61,7 @@ impl WeixinApp {
             .window_control_area(WindowControlArea::Drag)
             .w(UI::toolbar_width())
             .h_full()
-            .bg(weixin_colors.toolbar_bg) // 左侧工具栏背景
+            .bg(weixin_colors.toolbar_bg)
             .flex()
             .items_center()
             .justify_center()
@@ -73,17 +70,15 @@ impl WeixinApp {
                     .w(crate::ui::constants::title_avatar_size())
                     .h(crate::ui::constants::title_avatar_size())
                     .rounded(crate::ui::constants::radius_md())
-.src(crate::ui::avatar::avatar_for_key("self"))
+                    .src(crate::ui::avatar::avatar_for_key("self")),
             )
     }
 
-    /// 渲染搜索区域
     fn render_search_area(&self, cx: &Context<Self>) -> impl IntoElement {
         let search_input = self.session_list.read(cx).search_input.clone();
         crate::ui::widgets::search_area::search_area(&search_input, cx)
     }
 
-    /// 渲染聊天头部（单行布局）
     fn render_chat_header(
         &self,
         title: &str,
@@ -97,22 +92,18 @@ impl WeixinApp {
 
         use crate::ui::constants as UI;
         h_flex()
-            .h(UI::title_bar_height()) // 与左侧高度一致
+            .h(UI::title_bar_height())
             .w_full()
-            .bg(weixin_colors.chat_area_bg) // 右侧聊天区域背景 EDEDED
+            .bg(weixin_colors.chat_area_bg)
             .items_center()
             .child(
-                // 左侧：标题和功能按钮
                 h_flex()
                     .window_control_area(WindowControlArea::Drag)
                     .h_full()
                     .flex_1()
                     .items_center()
                     .pl_3()
-                    .child(
-                        // 标题
-                        div().text_color(theme.foreground).child(title_text),
-                    ),
+                    .child(div().text_color(theme.foreground).child(title_text)),
             )
             .child(
                 h_flex()
@@ -127,7 +118,6 @@ impl WeixinApp {
             )
     }
 
-    /// 渲染主内容区域
     fn render_main_content(&self, _cx: &Context<Self>) -> impl IntoElement {
         h_flex()
             .flex_1()

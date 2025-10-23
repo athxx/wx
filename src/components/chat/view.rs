@@ -1,6 +1,6 @@
 use gpui::{
-div, px, AnyElement, App, AppContext, Context, Entity, InteractiveElement,
-    IntoElement, ParentElement, Pixels, Render, Styled, StatefulInteractiveElement, Window,
+    div, px, AnyElement, App, AppContext, Context, Entity, InteractiveElement, IntoElement,
+    ParentElement, Pixels, Render, StatefulInteractiveElement, Styled, Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
@@ -17,7 +17,6 @@ pub struct ChatArea {
     current_session: Option<ChatSession>,
     input_state: Entity<InputState>,
     on_send_message: Option<Box<dyn Fn(String) + 'static>>,
-    // Zed-like manual sizing (no ResizableState coupling)
     current_input_height: Pixels,
     min_input_height: Pixels,
     max_input_height: Pixels,
@@ -99,7 +98,6 @@ impl ChatArea {
         v_flex()
             .size_full()
             .child(
-                // 工具栏
                 div()
                     .w_full()
                     .px_3()
@@ -107,7 +105,6 @@ impl ChatArea {
                     .child(crate::ui::widgets::chat_toolbar::chat_toolbar(theme)),
             )
             .child(
-                // 输入框容器 - 占据剩余空间，内部自动滚动
                 div().flex_1().w_full().px_2().overflow_hidden().child(
                     TextInput::new(&self.input_state)
                         .text_sm()
@@ -117,7 +114,6 @@ impl ChatArea {
                 ),
             )
             .child(
-                // 发送按钮 - 固定在底部右侧
                 div().w_full().flex().justify_end().px_2().pb_2().child(
                     Button::new("send")
                         .child(h_flex().text_sm().items_center().child("发送(S)"))
@@ -139,12 +135,12 @@ impl ChatArea {
         self.drag_start_height = self.current_input_height;
     }
 
-fn update_resize(&mut self, _window: &mut Window, cx: &mut Context<Self>, current_y: Pixels) {
+    fn update_resize(&mut self, _window: &mut Window, cx: &mut Context<Self>, current_y: Pixels) {
         if !self.is_resizing {
             return;
         }
         let dy = current_y - self.drag_start_y;
-        let mut new_h = self.drag_start_height - dy; // 往下拖动（dy>0）输入区变小，往上拖动（dy<0）输入区变大
+        let mut new_h = self.drag_start_height - dy;
         if new_h < self.min_input_height {
             new_h = self.min_input_height;
         }
@@ -167,7 +163,7 @@ impl Render for ChatArea {
         let weixin_colors = Theme::weixin_colors(cx);
         let no_session_text_color = theme.muted_foreground;
         let border_color = theme.border;
-        let bg_color = weixin_colors.chat_area_bg; // 右侧聊天区域背景 EDEDED
+        let bg_color = weixin_colors.chat_area_bg;
 
         let messages_view = if let Some(session) = &self.current_session {
             let is_group = session.contact.is_group;
@@ -190,11 +186,9 @@ impl Render for ChatArea {
                 .into_any_element()
         };
 
-        // 主聊天区域：顶部消息列表，分隔条，底部固定高输入区
         v_flex()
             .flex_1()
             .bg(bg_color)
-            // 捕获全局鼠标事件以在拖拽时更新高度
             .on_mouse_up(
                 gpui::MouseButton::Left,
                 cx.listener(|this, _evt: &gpui::MouseUpEvent, _window, cx| {
@@ -203,27 +197,24 @@ impl Render for ChatArea {
             )
             .on_mouse_move(
                 cx.listener(|this, evt: &gpui::MouseMoveEvent, _window, cx| {
-                    // 使用窗口坐标系的 y 值
                     let y = evt.position.y;
                     this.update_resize(_window, cx, y);
                 }),
             )
             .child(
-                // 消息区域
                 div()
                     .id("chat-messages")
                     .flex_1()
                     .w_full()
-                    .bg(bg_color) // 聊天消息区域背景 EDEDED
+                    .bg(bg_color)
                     .overflow_y_scroll()
                     .border_t_1()
                     .border_color(border_color)
                     .child(messages_view),
             )
             .child(
-                // 分隔条：用于拖拽调整输入区高度（外层加大检测区域）
                 div()
-                    .h(crate::ui::constants::drag_handle_height()) // 较大的检测区域
+                    .h(crate::ui::constants::drag_handle_height())
                     .w_full()
                     .flex()
                     .bg(bg_color)
@@ -237,16 +228,17 @@ impl Render for ChatArea {
                         }),
                     )
                     .child(
-                        // 内层实际显示的1px分割线
-                        div().h(crate::ui::constants::hairline()).w_full().bg(border_color),
+                        div()
+                            .h(crate::ui::constants::hairline())
+                            .w_full()
+                            .bg(border_color),
                     ),
             )
             .child(
-                // 固定高度的输入区域
                 div()
                     .h(self.current_input_height)
                     .w_full()
-                    .bg(bg_color) // 输入区域背景 EDEDED
+                    .bg(bg_color)
                     .child(self.render_input_area(cx)),
             )
     }

@@ -2,7 +2,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static AVATAR_SEQ: AtomicUsize = AtomicUsize::new(0);
 
-// List of avatar svg icons under assets/ava
 const AVA_SVGS: &[&str] = &[
     "ava/afro.svg",
     "ava/angry-.svg",
@@ -29,14 +28,12 @@ const AVA_SVGS: &[&str] = &[
     "ava/gentleman-.svg",
 ];
 
-/// Deterministically pick an avatar by key (stable across re-renders)
 pub fn avatar_for_key(key: &str) -> &'static str {
     let h = gpui::hash(&key.to_string()) as usize;
     let ix = h % AVA_SVGS.len();
     AVA_SVGS[ix]
 }
 
-/// Fallback: non-deterministic sequence (avoid using in UI renders)
 #[allow(dead_code)]
 pub fn random_avatar_path() -> &'static str {
     let ix = AVATAR_SEQ.fetch_add(1, Ordering::Relaxed) % AVA_SVGS.len();

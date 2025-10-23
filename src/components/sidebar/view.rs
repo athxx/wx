@@ -47,14 +47,12 @@ impl ToolBar {
         let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
 
-        // 根据是否激活和是否有fill版本决定图标路径
         let icon_path = if is_active {
             item.icon_path_fill().unwrap_or(item.icon_path())
         } else {
             item.icon_path()
         };
 
-        // 只有带fill的图标在激活时才变绿色
         let icon_color = if is_active && item.has_fill() {
             weixin_colors.weixin_green
         } else {
@@ -92,8 +90,11 @@ impl ToolBar {
             )
     }
 
-fn render_phone_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // 为 phone 弹出菜单项创建 hover 状态（先创建再 clone，和 render_menu_button 一致）
+    fn render_phone_button(
+        &self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let theme = cx.theme();
 
         div().w_full().flex().items_center().justify_center().child(
@@ -113,7 +114,6 @@ fn render_phone_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> i
                         ),
                 )
                 .content(move |window, cx| {
-                    // 每次打开 Popover 时重置 hover 状态
                     let phone_video_hovered = cx.new(|_| false);
                     let phone_voice_hovered = cx.new(|_| false);
 
@@ -161,8 +161,7 @@ fn render_phone_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> i
         )
     }
 
-fn render_menu_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // 为每个菜单项创建 hover 状态
+    fn render_menu_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
         div()
@@ -189,7 +188,6 @@ Icon::default()
                     )
 .content(move |window, cx| {
                         let theme_popover = cx.theme().popover;
-                        // 每次打开 Popover 时重置 hover 状态
                         let video_live_hovered = cx.new(|_| false);
                         let chat_files_hovered = cx.new(|_| false);
                         let chat_history_hovered = cx.new(|_| false);
@@ -329,13 +327,12 @@ impl Render for ToolBar {
         let weixin_colors = Theme::weixin_colors(cx);
 
         v_flex()
-            .bg(weixin_colors.toolbar_bg) // 左侧工具栏背景 EDEDED
+            .bg(weixin_colors.toolbar_bg)
             .w(crate::ui::constants::toolbar_width())
             .h_full()
             .items_center()
             .py_2()
             .child(
-                // 主要功能按钮
                 v_flex()
                     .flex_1()
                     .w_full()
@@ -366,7 +363,6 @@ impl Render for ToolBar {
                     )),
             )
             .child(
-                // 底部按钮
                 v_flex()
                     .w_full()
                     .items_center()

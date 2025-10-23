@@ -1,25 +1,24 @@
-use gpui::{div, rgb, white, InteractiveElement, IntoElement, ParentElement, Styled, WindowControlArea};
+use gpui::{
+    div, rgb, white, InteractiveElement, IntoElement, ParentElement, Styled, WindowControlArea,
+};
 use gpui_component::{h_flex, Icon, Sizable};
 
 pub fn window_controls(is_maximized: bool, theme: &gpui_component::Theme) -> impl IntoElement {
     h_flex()
         .h_8()
         .items_center()
-        // 固定按钮
         .child(window_button(
             "win-btn-pin",
             "nail.svg",
             WindowControlArea::Min,
             theme,
         ))
-        // 最小化按钮
         .child(window_button(
             "win-btn-min",
             "window-minimize.svg",
             WindowControlArea::Min,
             theme,
         ))
-        // 最大化/还原按钮
         .child(window_button(
             "win-btn-max",
             if is_maximized {
@@ -30,7 +29,6 @@ pub fn window_controls(is_maximized: bool, theme: &gpui_component::Theme) -> imp
             WindowControlArea::Max,
             theme,
         ))
-        // 关闭按钮
         .child(
             div()
                 .id("win-btn-close")

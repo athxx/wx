@@ -29,9 +29,10 @@ pub fn session_row_content(
         .w_full()
         .gap_3()
         .items_center()
-        .child(
-            crate::ui::widgets::badge_avatar::badge_avatar(contact, weixin_colors),
-        )
+        .child(crate::ui::widgets::badge_avatar::badge_avatar(
+            contact,
+            weixin_colors,
+        ))
         .child(
             v_flex()
                 .flex_1()
@@ -39,7 +40,6 @@ pub fn session_row_content(
                 .overflow_hidden()
                 .min_w_0()
                 .child(
-                    // 第一行：名称、时间
                     h_flex()
                         .w_full()
                         .justify_between()
@@ -74,7 +74,6 @@ pub fn session_row_content(
                         ),
                 )
                 .child(
-                    // 第二行：消息预览
                     div()
                         .w_full()
                         .text_sm()

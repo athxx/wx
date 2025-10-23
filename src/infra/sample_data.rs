@@ -1,10 +1,8 @@
 use crate::models::{Contact, Message};
 use chrono::Local;
 
-/// 创建示例联系人数据
 pub fn create_sample_contacts() -> Vec<Contact> {
     let mut contacts = vec![
-        // 群组
         Contact::new("group1", "Rust学习小组").as_group(
             156,
             vec![
@@ -32,7 +30,6 @@ pub fn create_sample_contacts() -> Vec<Contact> {
                 "运维".to_string(),
             ],
         ),
-        // 个人
         Contact::new("1", "张三"),
         Contact::new("2", "李四"),
         Contact::new("3", "王五"),
@@ -40,7 +37,6 @@ pub fn create_sample_contacts() -> Vec<Contact> {
         Contact::new("5", "钱七"),
     ];
 
-    // 设置消息预览和时间
     for (i, contact) in contacts.iter_mut().enumerate() {
         if contact.is_group {
             contact.last_sender_name = Some(
@@ -61,7 +57,6 @@ pub fn create_sample_contacts() -> Vec<Contact> {
     contacts
 }
 
-/// 创建示例消息数据
 pub fn create_sample_messages(contact: &Contact) -> Vec<Message> {
     let base_time = Local::now() - chrono::Duration::hours(2);
 

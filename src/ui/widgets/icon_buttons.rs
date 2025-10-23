@@ -16,8 +16,6 @@ pub fn icon_button(path: &'static str, theme: &gpui_component::Theme) -> impl In
         )
 }
 
-
-// Down icon styled like chat_header_actions.rs narrow button
 pub fn header_like_narrow_down_button(theme: &gpui_component::Theme) -> impl IntoElement {
     h_flex()
         .p(crate::ui::constants::header_action_padding())
@@ -33,6 +31,6 @@ pub fn header_like_narrow_down_button(theme: &gpui_component::Theme) -> impl Int
                 .path("down.svg")
                 .w(crate::ui::constants::icon_sm())
                 .h(crate::ui::constants::icon_sm())
-.text_color(theme.foreground),
+                .text_color(theme.foreground),
         )
 }

@@ -9,7 +9,6 @@ use gpui_component::{
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 
-// Global guard to ensure only one Settings window is open at a time
 pub static SETTINGS_WINDOW_OPEN: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -41,13 +40,12 @@ impl EventEmitter<DismissEvent> for SettingsWindow {}
 
 impl SettingsWindow {
     pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
-        // 订阅全局主题变化
         let theme_observer = cx.observe_global::<Theme>(|_this, cx| {
             cx.notify();
         });
 
         Self {
-            active_tab_ix: 1, // General tab
+            active_tab_ix: 1,
             current_language: "简体中文".to_string(),
             current_font_size: FontSize::Standard,
             _theme_observer: Some(theme_observer),
@@ -107,9 +105,10 @@ impl SettingsWindow {
                     .child(
                         v_flex()
                             .gap_2()
-                            .child(
-                                crate::ui::widgets::setting_card::section_title(cx, "账号信息"),
-                            )
+                            .child(crate::ui::widgets::setting_card::section_title(
+                                cx,
+                                "账号信息",
+                            ))
                             .child(
                                 h_flex()
                                     .items_center()
@@ -142,9 +141,10 @@ impl SettingsWindow {
                     .child(
                         v_flex()
                             .gap_2()
-                            .child(
-                                crate::ui::widgets::setting_card::section_title(cx, "文件存储"),
-                            )
+                            .child(crate::ui::widgets::setting_card::section_title(
+                                cx,
+                                "文件存储",
+                            ))
                             .child(
                                 v_flex()
                                     .gap_1()
@@ -168,7 +168,7 @@ impl SettingsWindow {
                                                 div()
                                                     .px_2()
                                                     .py_1()
-.rounded(crate::ui::constants::radius_sm())
+                                                    .rounded(crate::ui::constants::radius_sm())
                                                     .bg(theme.secondary)
                                                     .cursor_pointer()
                                                     .hover(|s| s.bg(theme.secondary_hover))
@@ -194,7 +194,6 @@ impl SettingsWindow {
         let theme = cx.theme();
         let foreground = theme.foreground;
 
-        // Build rows first to avoid borrow conflicts on `cx`
         let language_row = {
             let label = div().text_sm().text_color(foreground).child("语言");
             let btn = self.render_language_button(window, cx);
@@ -228,9 +227,7 @@ impl SettingsWindow {
 
         v_flex()
             .gap_6()
-            // 语言设置 Card
             .child(setting_card::card(cx, language_row))
-            // 外观和字体大小设置 Card
             .child(setting_card::card(cx, appearance_card_content))
     }
 
@@ -409,7 +406,6 @@ impl SettingsWindow {
             )
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
-                // 每次打开 Popover 时重置 hover 状态
                 let light_hovered = cx.new(|_| false);
                 let dark_hovered = cx.new(|_| false);
 
@@ -606,7 +602,6 @@ impl SettingsWindow {
             )
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
-                // 每次打开 Popover 时重置 hover 状态
                 let chinese_hovered = cx.new(|_| false);
                 let traditional_hovered = cx.new(|_| false);
                 let english_hovered = cx.new(|_| false);
@@ -672,7 +667,7 @@ impl SettingsWindow {
                     })
                     .p_1()
                     .bg(theme_popover)
-.rounded(crate::ui::constants::radius_md())
+                    .rounded(crate::ui::constants::radius_md())
                     .shadow_md()
                 })
             })
@@ -715,7 +710,6 @@ impl SettingsWindow {
             )
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
-                // 每次打开 Popover 时重置 hover 状态
                 let small_hovered = cx.new(|_| false);
                 let standard_hovered = cx.new(|_| false);
                 let large_hovered = cx.new(|_| false);
@@ -796,8 +790,8 @@ impl SettingsWindow {
         let weixin_colors = Theme::weixin_colors(cx);
         let theme = cx.theme();
         let is_active = self.active_tab_ix == ix;
-        let active_bg = weixin_colors.item_selected; // DEDEDE / 深色下为 3A3A3A
-        let hover_bg = weixin_colors.item_hover; // EAEAEA / 深色下为 333333
+        let active_bg = weixin_colors.item_selected;
+        let hover_bg = weixin_colors.item_hover;
         let transparent_bg = gpui::transparent_black();
         let text_color = theme.foreground;
 
@@ -825,7 +819,6 @@ impl SettingsWindow {
             }))
             .child(div().text_sm().text_color(text_color).child(label))
     }
-
 }
 
 impl Drop for SettingsWindow {
@@ -840,14 +833,13 @@ impl Render for SettingsWindow {
         let theme = cx.theme();
         let close_hover = rgb(0xe81123);
         let text_color = theme.foreground;
-        let left_bg = weixin_colors.session_list_bg; // 左侧背景色 (F7F7F7)
-        let right_bg = weixin_colors.chat_area_bg; // 右侧背景色 (EDEDED)
-        let border_color = theme.border; // 分割线颜色
+        let left_bg = weixin_colors.session_list_bg;
+        let right_bg = weixin_colors.chat_area_bg;
+        let border_color = theme.border;
 
         h_flex()
             .size_full()
             .child(
-                // 左侧区域（包括标题栏和导航栏）
                 v_flex()
                     .w(crate::ui::constants::settings_sidebar_width())
                     .h_full()
@@ -855,7 +847,6 @@ impl Render for SettingsWindow {
                     .border_r_1()
                     .border_color(border_color)
                     .child(
-                        // 左侧标题栏区域
                         div()
                             .window_control_area(WindowControlArea::Drag)
                             .w_full()
@@ -865,7 +856,6 @@ impl Render for SettingsWindow {
                             .px_4(),
                     )
                     .child(
-                        // 导航栏
                         v_flex()
                             .flex_1()
                             .w_full()
@@ -881,26 +871,22 @@ impl Render for SettingsWindow {
                     ),
             )
             .child(
-                // 右侧区域（包括标题栏和内容）
                 v_flex()
                     .flex_1()
                     .h_full()
                     .bg(right_bg)
                     .child(
-                        // 右侧标题栏
                         h_flex()
                             .w_full()
                             .h(crate::ui::constants::settings_title_height())
                             .items_center()
                             .child(
-                                // 可拖动区域
                                 div()
                                     .window_control_area(WindowControlArea::Drag)
                                     .flex_1()
                                     .h_full(),
                             )
                             .child(
-                                // 关闭按钮
                                 div()
                                     .id("settings-close-btn")
                                     .flex()
@@ -920,7 +906,6 @@ impl Render for SettingsWindow {
                             ),
                     )
                     .child(
-                        // 内容区域
                         v_flex()
                             .flex_1()
                             .w_full()

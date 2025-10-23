@@ -1,7 +1,6 @@
 use gpui::{div, App, IntoElement, ParentElement, Pixels, RenderOnce, Styled, Window};
 use gpui_component::{avatar::Avatar, ActiveTheme, Sizable};
 
-/// 群组头像组件 - 显示2x2网格的成员头像
 #[derive(IntoElement)]
 pub struct GroupAvatar {
     members: Vec<String>,
@@ -22,7 +21,6 @@ impl RenderOnce for GroupAvatar {
         let half_size = self.size / 2.0;
         let theme = cx.theme();
 
-        // 确保至少有4个成员（不足的用空字符串填充）
         let mut members = self.members.clone();
         while members.len() < 4 {
             members.push("".to_string());
@@ -39,7 +37,6 @@ impl RenderOnce for GroupAvatar {
                     .flex()
                     .flex_wrap()
                     .child(
-                        // 左上
                         div().size(half_size).child(
                             Avatar::new()
                                 .src(crate::ui::avatar::avatar_for_key(&members[0]))
@@ -47,7 +44,6 @@ impl RenderOnce for GroupAvatar {
                         ),
                     )
                     .child(
-                        // 右上
                         div().size(half_size).child(
                             Avatar::new()
                                 .src(crate::ui::avatar::avatar_for_key(&members[1]))
@@ -55,7 +51,6 @@ impl RenderOnce for GroupAvatar {
                         ),
                     )
                     .child(
-                        // 左下
                         div().size(half_size).child(
                             Avatar::new()
                                 .src(crate::ui::avatar::avatar_for_key(&members[2]))
@@ -63,7 +58,6 @@ impl RenderOnce for GroupAvatar {
                         ),
                     )
                     .child(
-                        // 右下
                         div().size(half_size).child(
                             Avatar::new()
                                 .src(crate::ui::avatar::avatar_for_key(&members[3]))
