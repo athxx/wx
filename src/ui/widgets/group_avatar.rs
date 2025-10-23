@@ -30,7 +30,7 @@ impl RenderOnce for GroupAvatar {
 
         div()
             .size(self.size)
-            .rounded(crate::ui::constants::radius_sm())
+            .rounded(crate::ui::constants::avatar_small_radius())
             .overflow_hidden()
             .bg(theme.muted)
             .child(
@@ -40,27 +40,35 @@ impl RenderOnce for GroupAvatar {
                     .flex_wrap()
                     .child(
                         // 左上
-                        div()
-                            .size(half_size)
-                            .child(Avatar::new().name(&members[0]).xsmall()),
+                        div().size(half_size).child(
+                            Avatar::new()
+                                .src(crate::ui::avatar::avatar_for_key(&members[0]))
+                                .xsmall(),
+                        ),
                     )
                     .child(
                         // 右上
-                        div()
-                            .size(half_size)
-                            .child(Avatar::new().name(&members[1]).xsmall()),
+                        div().size(half_size).child(
+                            Avatar::new()
+                                .src(crate::ui::avatar::avatar_for_key(&members[1]))
+                                .xsmall(),
+                        ),
                     )
                     .child(
                         // 左下
-                        div()
-                            .size(half_size)
-                            .child(Avatar::new().name(&members[2]).xsmall()),
+                        div().size(half_size).child(
+                            Avatar::new()
+                                .src(crate::ui::avatar::avatar_for_key(&members[2]))
+                                .xsmall(),
+                        ),
                     )
                     .child(
                         // 右下
-                        div()
-                            .size(half_size)
-                            .child(Avatar::new().name(&members[3]).xsmall()),
+                        div().size(half_size).child(
+                            Avatar::new()
+                                .src(crate::ui::avatar::avatar_for_key(&members[3]))
+                                .xsmall(),
+                        ),
                     ),
             )
     }

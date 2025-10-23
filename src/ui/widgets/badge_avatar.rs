@@ -2,8 +2,8 @@ use gpui::prelude::FluentBuilder;
 use gpui::{div, IntoElement, ParentElement, Styled};
 use gpui_component::{avatar::Avatar, badge::Badge, Sizable};
 
-use crate::ui::widgets::group_avatar::GroupAvatar;
 use crate::models::Contact;
+use crate::ui::widgets::group_avatar::GroupAvatar;
 
 pub fn badge_avatar(
     contact: &Contact,
@@ -22,8 +22,11 @@ pub fn badge_avatar(
                     })
                     .when(!contact.is_group, |badge| {
                         badge.child(
-                            div().rounded(crate::ui::constants::radius_sm()).overflow_hidden().child(
-                                Avatar::new().with_size(crate::ui::constants::avatar_large()),
+                            div().overflow_hidden().child(
+                                Avatar::new()
+                                    .rounded(crate::ui::constants::avatar_small_radius())
+                                    .with_size(crate::ui::constants::avatar_large())
+                                    .src(crate::ui::avatar::avatar_for_key(&contact.id)),
                             ),
                         )
                     }),
@@ -35,10 +38,12 @@ pub fn badge_avatar(
             })
             .when(!contact.is_group, |div_| {
                 div_.child(
-                    div()
-                        .rounded(crate::ui::constants::radius_sm())
-                        .overflow_hidden()
-                        .child(Avatar::new().with_size(crate::ui::constants::avatar_large())),
+                    div().overflow_hidden().child(
+                        Avatar::new()
+                            .rounded(crate::ui::constants::avatar_small_radius())
+                            .with_size(crate::ui::constants::avatar_large())
+                            .src(crate::ui::avatar::avatar_for_key(&contact.id)),
+                    ),
                 )
             })
         })

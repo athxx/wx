@@ -3,7 +3,7 @@ use crate::app::state::WeixinApp;
 use crate::components::SettingsWindow;
 use crate::components::{SessionList, ToolBar};
 use gpui::{
-    px, App, AppContext, Bounds, Context, Entity, Size, WindowBounds, WindowKind, WindowOptions,
+    App, AppContext, Bounds, Context, Entity, Size, WindowBounds, WindowKind, WindowOptions,
 };
 use gpui_component::{Root, TitleBar};
 
@@ -29,12 +29,20 @@ impl WeixinApp {
             }
         })
         .detach();
-
-        // 订阅工具栏设置事件
     }
 
     /// 打开设置窗口
     pub fn open_settings_window(cx: &mut App) {
+        use crate::components::settings::window::SETTINGS_WINDOW_OPEN;
+        use std::sync::atomic::Ordering;
+
+        // 若已打开则直接返回
+        if SETTINGS_WINDOW_OPEN.load(Ordering::SeqCst) {
+            return;
+        }
+        // 标记为已打开（在 SettingsWindow Drop 时会复位）
+        SETTINGS_WINDOW_OPEN.store(true, Ordering::SeqCst);
+
         let window_size = Size {
             width: crate::ui::constants::settings_window_width(),
             height: crate::ui::constants::settings_window_height(),

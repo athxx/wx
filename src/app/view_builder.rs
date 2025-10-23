@@ -1,7 +1,7 @@
 use crate::app::state::WeixinApp;
 use crate::ui::theme::Theme;
 use gpui::{
-    div, px, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
+    div, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     WindowControlArea,
 };
 use gpui_component::{
@@ -14,10 +14,12 @@ use gpui_component::{
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // 不设置整体背景，让各个区域自己设置
+        let notification_layer = gpui_component::Root::render_notification_layer(window, cx);
         v_flex()
             .size_full()
             .child(self.render_title_bar(window, cx))
             .child(self.render_main_content(cx))
+            .children(notification_layer)
     }
 }
 
@@ -71,7 +73,7 @@ impl WeixinApp {
                     .w(crate::ui::constants::title_avatar_size())
                     .h(crate::ui::constants::title_avatar_size())
                     .rounded(crate::ui::constants::radius_md())
-                    .name("HL"),
+.src(crate::ui::avatar::avatar_for_key("self"))
             )
     }
 

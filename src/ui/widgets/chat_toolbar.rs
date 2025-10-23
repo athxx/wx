@@ -24,9 +24,9 @@ pub fn chat_toolbar(theme: &gpui_component::Theme) -> impl IntoElement {
                     "scissors.svg",
                     theme,
                 ))
-                .child(crate::ui::widgets::icon_buttons::narrow_icon_button(
-                    "down.svg", theme,
-                )),
+                .child(crate::ui::widgets::icon_buttons::header_like_narrow_down_button(
+                    theme,
+                ))
         )
         .child(
             // 中间空白区域

@@ -31,9 +31,9 @@ pub fn chat_header_actions(theme: &gpui_component::Theme) -> impl IntoElement {
                 .items_center()
                 .mr_2()
                 .cursor_pointer()
+                .hover(|this| this.bg(theme.secondary))
                 .w(crate::ui::constants::header_narrow_button_width())
                 .h(crate::ui::constants::header_narrow_button_height())
-                .hover(|this| this.bg(theme.secondary))
                 .child(
                     Icon::default()
                         .path("down.svg")

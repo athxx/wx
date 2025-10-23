@@ -9,7 +9,7 @@ use app::WeixinApp;
 use assets::Assets;
 
 use gpui::{
-    px, AppContext, Application, Bounds, Size, WindowBounds, WindowKind, WindowOptions,
+    AppContext, Application, Bounds, Size, WindowBounds, WindowKind, WindowOptions,
 };
 use gpui_component::{Root, TitleBar};
 

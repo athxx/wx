@@ -1,5 +1,5 @@
 use gpui::{
-    div, px, App, AppContext, Context, Corner, DismissEvent, Element, Entity, EventEmitter,
+    div, App, AppContext, Context, Corner, DismissEvent, Element, Entity, EventEmitter,
     InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled,
     Window,
 };
@@ -66,15 +66,15 @@ impl ToolBar {
             .flex()
             .items_center()
             .justify_center()
-            .py(px(3.))
+            .py(crate::ui::constants::toolbar_button_padding_y())
             .child(
                 div()
                     .id(id)
                     .flex()
                     .items_center()
                     .justify_center()
-                    .p(px(10.))
-                    .rounded(px(6.))
+                    .p(crate::ui::constants::toolbar_item_padding())
+                    .rounded(crate::ui::constants::radius_md())
                     .cursor_pointer()
                     .hover(|this| this.bg(theme.secondary))
                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -92,7 +92,7 @@ impl ToolBar {
             )
     }
 
-    fn render_phone_button(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+fn render_phone_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // 为 phone 弹出菜单项创建 hover 状态（先创建再 clone，和 render_menu_button 一致）
         let theme = cx.theme();
 
@@ -105,14 +105,14 @@ impl ToolBar {
                         .w(crate::ui::constants::toolbar_trigger_size())
                         .h(crate::ui::constants::toolbar_trigger_size())
                         .child(
-Icon::default()
+                            Icon::default()
                                 .path("phone.svg")
                                 .w(crate::ui::constants::icon_md())
                                 .h(crate::ui::constants::icon_md())
                                 .text_color(theme.muted_foreground),
                         ),
                 )
-.content(move |window, cx| {
+                .content(move |window, cx| {
                     // 每次打开 Popover 时重置 hover 状态
                     let phone_video_hovered = cx.new(|_| false);
                     let phone_voice_hovered = cx.new(|_| false);
@@ -161,7 +161,7 @@ Icon::default()
         )
     }
 
-    fn render_menu_button(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+fn render_menu_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // 为每个菜单项创建 hover 状态
         let theme = cx.theme();
 
@@ -170,7 +170,7 @@ Icon::default()
             .flex()
             .items_center()
             .justify_center()
-            .py(px(4.))
+.py(crate::ui::constants::toolbar_menu_padding_y())
             .child(
                 Popover::new("toolbar-menu")
                     .anchor(Corner::BottomRight)
@@ -306,7 +306,7 @@ Icon::default()
                                             move |is_hovering, cx| {
                                                 state.update(cx, |s, _| *s = is_hovering);
                                             },
-                                            cx.listener(|_, _, _, cx| {
+cx.listener(|_, _, _, cx| {
                                                 crate::app::WeixinApp::open_settings_window(cx);
                                                 cx.emit(DismissEvent);
                                             }),
@@ -316,7 +316,7 @@ Icon::default()
                             })
                             .p_1()
                             .bg(theme_popover)
-                            .rounded(px(6.))
+ .rounded(crate::ui::constants::radius_md())
                             .shadow_md()
                         })
                     }),

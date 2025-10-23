@@ -1,2 +1,31 @@
-<img width="1349" height="974" alt="image" src="https://github.com/user-attachments/assets/c2d3115d-1497-4df9-a935-c8e0c030621f" />
-<img width="1349" height="974" alt="image" src="https://github.com/user-attachments/assets/4f5d5cd8-7725-4752-bc5c-413f552c35f8" />
+# WeChat Desktop Clone
+
+A WeChat desktop UI clone built with [gpui](https://github.com/zed-industries/gpui) for learning purposes.
+
+## Features
+
+- WeChat-like interface layout with chat area and sessions list
+- Toolbar with action buttons
+- Settings window (singleton pattern)
+- Deterministic SVG avatars from `assets/ava/*.svg`
+
+## Quick Start
+
+```bash
+cargo run
+```
+
+## Build
+
+```bash
+cargo build --release
+```
+
+## Tech Stack
+
+- **Rust** - Systems programming language
+- **gpui** - GPU-accelerated UI framework from Zed team
+
+## License
+
+Learning project only

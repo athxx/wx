@@ -20,9 +20,10 @@ pub fn message_bubble(
             .when(is_self, |this| this.flex_row_reverse())
             .gap_3()
             .child(
-                gpui_component::avatar::Avatar::new()
+gpui_component::avatar::Avatar::new()
                     .with_size(crate::ui::constants::avatar_small())
-                    .rounded(crate::ui::constants::avatar_small_radius()),
+.rounded(crate::ui::constants::avatar_small_radius())
+                    .src(crate::ui::avatar::avatar_for_key(&message.sender_id)),
             )
             .child(
                 v_flex()
@@ -65,7 +66,7 @@ pub fn message_bubble(
                                 } else {
                                     weixin_colors.message_text_other
                                 })
-                                .text_base()
+                                .text_sm()
                                 .line_height(relative(1.6))
                                 .child(message.content.clone()),
                         ),

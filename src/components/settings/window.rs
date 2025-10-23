@@ -1,11 +1,16 @@
 use crate::ui::theme::{Theme, ThemeMode};
-use gpui::{prelude::FluentBuilder, DismissEvent, EventEmitter, *};
+use crate::ui::widgets::setting_card;
+use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
     button::Button,
     h_flex,
     popover::{Popover, PopoverContent},
     v_flex, ActiveTheme, ContextModal, Icon, Sizable,
 };
+use std::sync::atomic::{AtomicBool, Ordering};
+
+// Global guard to ensure only one Settings window is open at a time
+pub static SETTINGS_WINDOW_OPEN: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum SettingsTab {
@@ -103,11 +108,7 @@ impl SettingsWindow {
                         v_flex()
                             .gap_2()
                             .child(
-                                div()
-                                    .text_base()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme.foreground)
-                                    .child("账号信息"),
+                                crate::ui::widgets::setting_card::section_title(cx, "账号信息"),
                             )
                             .child(
                                 h_flex()
@@ -142,11 +143,7 @@ impl SettingsWindow {
                         v_flex()
                             .gap_2()
                             .child(
-                                div()
-                                    .text_base()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(theme.foreground)
-                                    .child("文件存储"),
+                                crate::ui::widgets::setting_card::section_title(cx, "文件存储"),
                             )
                             .child(
                                 v_flex()
@@ -171,7 +168,7 @@ impl SettingsWindow {
                                                 div()
                                                     .px_2()
                                                     .py_1()
-                                                    .rounded(px(4.))
+.rounded(crate::ui::constants::radius_sm())
                                                     .bg(theme.secondary)
                                                     .cursor_pointer()
                                                     .hover(|s| s.bg(theme.secondary_hover))
@@ -195,62 +192,46 @@ impl SettingsWindow {
     ) -> impl IntoElement {
         let theme_mode = cx.theme().mode;
         let theme = cx.theme();
-        let weixin_colors = Theme::weixin_colors(cx);
         let foreground = theme.foreground;
 
-        let card_bg = weixin_colors.session_list_bg; // F7F7F7 / 深色下为 1F1F1F
-        let border_color = theme.border;
+        // Build rows first to avoid borrow conflicts on `cx`
+        let language_row = {
+            let label = div().text_sm().text_color(foreground).child("语言");
+            let btn = self.render_language_button(window, cx);
+            h_flex()
+                .items_center()
+                .justify_between()
+                .py_2()
+                .child(label)
+                .child(btn)
+        };
+
+        let appearance_card_content = {
+            let theme_row = self.render_theme_setting(theme_mode, window, cx);
+            let divider = setting_card::divider(cx);
+            let font_row = {
+                let label = div().text_sm().text_color(foreground).child("字体大小");
+                let btn = self.render_font_size_button(window, cx);
+                h_flex()
+                    .items_center()
+                    .justify_between()
+                    .py_2()
+                    .child(label)
+                    .child(btn)
+            };
+            v_flex()
+                .gap_4()
+                .child(theme_row)
+                .child(divider)
+                .child(font_row)
+        };
 
         v_flex()
             .gap_6()
             // 语言设置 Card
-            .child(
-                div()
-                    .bg(card_bg)
-                    .rounded(crate::ui::constants::radius_lg())
-                    .border_1()
-                    .border_color(border_color)
-                    .p_4()
-                    .child(
-                        h_flex()
-                            .items_center()
-                            .justify_between()
-                            .py_2()
-                            .child(div().text_sm().text_color(foreground).child("语言"))
-                            .child(self.render_language_button(window, cx)),
-                    ),
-            )
+            .child(setting_card::card(cx, language_row))
             // 外观和字体大小设置 Card
-            .child(
-                div()
-                    .bg(card_bg)
-                    .rounded(px(8.))
-                    .border_1()
-                    .border_color(border_color)
-                    .p_4()
-                    .child(
-                        v_flex()
-                            .gap_4()
-                            // 外观设置
-                            .child(self.render_theme_setting(theme_mode, window, cx))
-                            // 分割线
-                            .child(
-                                div()
-                                    .w_full()
-                                    .h(crate::ui::constants::hairline())
-                                    .bg(border_color),
-                            )
-                            // 字体大小设置
-                            .child(
-                                h_flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .py_2()
-                                    .child(div().text_sm().text_color(foreground).child("字体大小"))
-                                    .child(self.render_font_size_button(window, cx)),
-                            ),
-                    ),
-            )
+            .child(setting_card::card(cx, appearance_card_content))
     }
 
     fn render_shortcuts(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -396,7 +377,7 @@ impl SettingsWindow {
     fn render_theme_button(
         &self,
         current_mode: ThemeMode,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let weixin_colors = Theme::weixin_colors(cx);
@@ -512,24 +493,13 @@ impl SettingsWindow {
         FSet: Fn(bool, &mut App) + Clone + 'static,
         L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
     {
-        div()
-            .id(id)
-            .w_full()
-            .px_3()
-            .py_2()
-            .rounded(px(4.))
-            .cursor_pointer()
-            .text_sm()
-            .when(hovered, |this| this.bg(rgb(0x07C160)))
-            .on_hover(move |&is_hovering, _, cx| {
-                set_hover(is_hovering, cx);
-            })
-            .on_mouse_down(gpui::MouseButton::Left, on_mouse_down)
-            .child(
-                div()
-                    .when(hovered, |this| this.text_color(gpui::white()))
-                    .child(label),
-            )
+        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
+            id,
+            label,
+            hovered,
+            set_hover,
+            on_mouse_down,
+        )
     }
 
     fn render_setting_row(
@@ -545,7 +515,7 @@ impl SettingsWindow {
             .justify_between()
             .py_2()
             .child(div().text_sm().text_color(theme.foreground).child(label))
-            .child(self.render_toggle(enabled))
+            .child(crate::ui::widgets::toggle::toggle(cx, enabled))
     }
 
     fn render_shortcut_item(
@@ -606,7 +576,7 @@ impl SettingsWindow {
 
     fn render_language_button(
         &self,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let current_language = self.current_language.clone();
@@ -702,7 +672,7 @@ impl SettingsWindow {
                     })
                     .p_1()
                     .bg(theme_popover)
-                    .rounded(px(6.))
+.rounded(crate::ui::constants::radius_md())
                     .shadow_md()
                 })
             })
@@ -710,7 +680,7 @@ impl SettingsWindow {
 
     fn render_font_size_button(
         &self,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let current_size = self.current_font_size;
@@ -732,7 +702,7 @@ impl SettingsWindow {
                         .child(current_size_str)
                         .child(
                             div()
-                                .p(px(1.5))
+                                .p(crate::ui::constants::icon_badge_padding_xs())
                                 .rounded_sm()
                                 .bg(weixin_colors.weixin_green)
                                 .child(
@@ -811,7 +781,7 @@ impl SettingsWindow {
                     })
                     .p_1()
                     .bg(theme_popover)
-                    .rounded(px(6.))
+                    .rounded(crate::ui::constants::radius_md())
                     .shadow_md()
                 })
             })
@@ -847,7 +817,7 @@ impl SettingsWindow {
             .px_4()
             .py_3()
             .cursor_pointer()
-            .rounded(px(4.))
+            .rounded(crate::ui::constants::radius_sm())
             .bg(if is_active { active_bg } else { transparent_bg })
             .hover(move |s| if is_active { s } else { s.bg(hover_bg) })
             .on_click(cx.listener(move |this, _ev, _window, cx| {
@@ -856,27 +826,11 @@ impl SettingsWindow {
             .child(div().text_sm().text_color(text_color).child(label))
     }
 
-    fn render_toggle(&self, enabled: bool) -> impl IntoElement {
-        let weixin_green = rgb(0x07c160);
-        let toggle_off = rgba(0xccccccff);
+}
 
-        div()
-            .w(px(40.))
-            .h(px(20.))
-            .rounded(px(10.))
-            .cursor_pointer()
-            .bg(if enabled { weixin_green } else { toggle_off })
-            .flex()
-            .items_center()
-            .px(px(2.))
-            .child(
-                div()
-                    .w(px(16.))
-                    .h(px(16.))
-                    .rounded(px(8.))
-                    .bg(gpui::white())
-                    .when(enabled, |this| this.ml_auto()),
-            )
+impl Drop for SettingsWindow {
+    fn drop(&mut self) {
+        SETTINGS_WINDOW_OPEN.store(false, Ordering::SeqCst);
     }
 }
 
@@ -905,7 +859,7 @@ impl Render for SettingsWindow {
                         div()
                             .window_control_area(WindowControlArea::Drag)
                             .w_full()
-                            .h(px(48.))
+                            .h(crate::ui::constants::settings_title_height())
                             .flex()
                             .items_center()
                             .px_4(),
