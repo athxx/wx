@@ -1,4 +1,4 @@
-use gpui::{rgb, rgba, App, Hsla};
+use gpui::{rgb, App, Hsla};
 use gpui_component::{ActiveTheme as _, Theme as GpuiTheme, ThemeMode as GpuiThemeMode};
 
 // Re-export ThemeMode from gpui-component
@@ -23,11 +23,9 @@ pub struct WeixinThemeColors {
     
     // WeChat特色的绿色
     pub weixin_green: Hsla,
-    pub weixin_green_hover: Hsla,
     
     // 未读徽章
     pub unread_badge: Hsla,
-    pub unread_badge_text: Hsla,
 }
 
 impl WeixinThemeColors {
@@ -49,11 +47,9 @@ impl WeixinThemeColors {
             
             // WeChat特色的绿色
             weixin_green: rgb(0x07c160).into(),
-            weixin_green_hover: rgb(0x06ad56).into(),
             
             // 未读徽章
             unread_badge: rgb(0xfa5151).into(),
-            unread_badge_text: rgb(0xffffff).into(),
         }
     }
 
@@ -75,11 +71,9 @@ impl WeixinThemeColors {
             
             // WeChat特色的绿色
             weixin_green: rgb(0x07c160).into(),
-            weixin_green_hover: rgb(0x06ad56).into(),
             
             // 未读徽章
             unread_badge: rgb(0xfa5151).into(),
-            unread_badge_text: rgb(0xffffff).into(),
         }
     }
 }
@@ -88,27 +82,12 @@ impl WeixinThemeColors {
 pub struct Theme;
 
 impl Theme {
-    /// 获取gpui-component的全局主题
-    pub fn get(cx: &App) -> &GpuiTheme {
-        cx.theme()
-    }
-
     /// 获取WeChat特定的主题颜色
     pub fn weixin_colors(cx: &App) -> WeixinThemeColors {
         match cx.theme().mode {
             GpuiThemeMode::Light => WeixinThemeColors::light(),
             GpuiThemeMode::Dark => WeixinThemeColors::dark(),
         }
-    }
-
-    /// 切换主题模式
-    pub fn toggle(cx: &mut App) {
-        let current_mode = cx.theme().mode;
-        let new_mode = match current_mode {
-            GpuiThemeMode::Light => GpuiThemeMode::Dark,
-            GpuiThemeMode::Dark => GpuiThemeMode::Light,
-        };
-        GpuiTheme::change(new_mode, None, cx);
     }
 
     /// 设置为亮色主题
@@ -121,8 +100,4 @@ impl Theme {
         GpuiTheme::change(GpuiThemeMode::Dark, None, cx);
     }
 
-    /// 判断是否为暗色主题
-    pub fn is_dark(cx: &App) -> bool {
-        matches!(cx.theme().mode, GpuiThemeMode::Dark)
-    }
 }

@@ -1,18 +1,15 @@
-mod app;
+pub mod app;
 mod assets;
-mod components;
-mod data;
+pub mod components;
 mod models;
-mod theme;
-mod domain;
 mod infra;
+mod ui;
 
 use app::WeixinApp;
 use assets::Assets;
-use theme::Theme;
 
 use gpui::{
-    px, App, AppContext, Application, Bounds, Size, Window, WindowBounds, WindowKind, WindowOptions,
+    px, AppContext, Application, Bounds, Size, WindowBounds, WindowKind, WindowOptions,
 };
 use gpui_component::{Root, TitleBar};
 
@@ -25,8 +22,8 @@ fn main() {
         cx.activate(true);
 
         let window_size = Size {
-            width: px(900.0),
-            height: px(650.0),
+            width: crate::ui::constants::app_window_width(),
+            height: crate::ui::constants::app_window_height(),
         };
 
         let window_bounds = Bounds::centered(None, window_size, cx);
@@ -35,8 +32,8 @@ fn main() {
             window_bounds: Some(WindowBounds::Windowed(window_bounds)),
             titlebar: Some(TitleBar::title_bar_options()),
             window_min_size: Some(Size {
-                width: px(800.),
-                height: px(600.),
+                width: crate::ui::constants::app_window_min_width(),
+                height: crate::ui::constants::app_window_min_height(),
             }),
             kind: WindowKind::Normal,
             ..Default::default()

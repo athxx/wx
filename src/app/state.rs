@@ -1,8 +1,7 @@
 use crate::components::{ChatArea, SessionList, ToolBar};
-use crate::domain::repos::{ContactsRepo, SessionsRepo};
 use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
-use crate::theme::Theme;
+use crate::ui::theme::Theme;
 use gpui::{App, AppContext, Context, Entity, Window};
 use gpui_component::resizable::ResizableState;
 
@@ -14,8 +13,7 @@ pub struct WeixinApp {
     pub chat_area: Entity<ChatArea>,
 
     // 数据仓库
-    contacts_repo: Box<dyn ContactsRepo>,
-    sessions_repo: Box<dyn SessionsRepo>,
+    sessions_repo: MemorySessionsRepo,
 
     // 数据状态
     pub contacts: Vec<Contact>,
@@ -32,8 +30,8 @@ impl WeixinApp {
     /// 创建新的应用实例
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         // 仓库实现（当前为内存版，内部仍调用 sample_data）
-        let contacts_repo: Box<dyn ContactsRepo> = Box::new(MemoryContactsRepo::new());
-        let sessions_repo: Box<dyn SessionsRepo> = Box::new(MemorySessionsRepo::new());
+        let contacts_repo = MemoryContactsRepo::new();
+        let sessions_repo = MemorySessionsRepo::new();
 
         // 读取联系人数据
         let contacts = contacts_repo.get_all();
@@ -63,7 +61,6 @@ impl WeixinApp {
             toolbar,
             session_list,
             chat_area,
-            contacts_repo,
             sessions_repo,
             contacts,
             current_session: None,

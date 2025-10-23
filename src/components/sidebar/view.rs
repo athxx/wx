@@ -1,49 +1,25 @@
 use gpui::{
-    actions, div, prelude::FluentBuilder, px, rgb, Action, AnyElement, App, AppContext, Context,
-    Corner, DismissEvent, Element, Entity, EventEmitter, InteractiveElement, IntoElement,
-    ParentElement, Render, StatefulInteractiveElement, Styled, Window,
+    div, px, App, AppContext, Context, Corner, DismissEvent, Element, Entity, EventEmitter,
+    InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled,
+    Window,
 };
 use gpui_component::{
-    avatar::Avatar,
-    button::{Button, ButtonCustomVariant, ButtonVariants},
-    divider::Divider,
-    h_flex,
+    button::{Button, ButtonVariants},
     popover::{Popover, PopoverContent},
-    v_flex, ActiveTheme, ContextModal, Icon, IconName, Sizable,
+    v_flex, ActiveTheme, ContextModal, Icon,
 };
 
-use crate::theme::{Theme, WeixinThemeColors};
-use serde::Deserialize;
+use crate::ui::theme::Theme;
 
 use crate::models::ToolbarItem;
 
-// 定义菜单相关的 Actions
-actions!(
-    toolbar,
-    [
-        VideoLiveCompanion,
-        ChatFiles,
-        ChatHistoryManagement,
-        Lock,
-        Feedback,
-        Settings
-    ]
-);
-
-#[derive(Clone)]
-pub struct ToolbarClickEvent {
-    pub item: ToolbarItem,
-}
-
-#[derive(Clone)]
-pub struct OpenSettingsEvent;
+use crate::app::events::AppEvent;
 
 pub struct ToolBar {
     active_item: ToolbarItem,
 }
 
-impl EventEmitter<ToolbarClickEvent> for ToolBar {}
-impl EventEmitter<OpenSettingsEvent> for ToolBar {}
+impl EventEmitter<AppEvent> for ToolBar {}
 
 impl ToolBar {
     pub fn new(_window: &mut Window, _cx: &mut Context<Self>) -> Self {
@@ -103,14 +79,14 @@ impl ToolBar {
                     .hover(|this| this.bg(theme.secondary))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.active_item = item;
-                        cx.emit(ToolbarClickEvent { item });
+                        cx.emit(AppEvent::ToolbarClicked { item });
                         cx.notify();
                     }))
                     .child(
                         Icon::default()
                             .path(icon_path)
-                            .w(px(21.))
-                            .h(px(21.))
+                            .w(crate::ui::constants::icon_md())
+                            .h(crate::ui::constants::icon_md())
                             .text_color(icon_color),
                     ),
             )
@@ -118,16 +94,7 @@ impl ToolBar {
 
     fn render_phone_button(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // 为 phone 弹出菜单项创建 hover 状态（先创建再 clone，和 render_menu_button 一致）
-        let phone_video_hovered =
-            window.use_keyed_state("phone-video-call-hover", cx, |_, _| false);
-        let phone_voice_hovered =
-            window.use_keyed_state("phone-voice-call-hover", cx, |_, _| false);
-
         let theme = cx.theme();
-
-        // 外层 clone，供 content 闭包捕获
-        let phone_video_hovered = phone_video_hovered.clone();
-        let phone_voice_hovered = phone_voice_hovered.clone();
 
         div().w_full().flex().items_center().justify_center().child(
             Popover::new("toolbar-phone")
@@ -135,20 +102,20 @@ impl ToolBar {
                 .trigger(
                     Button::new("phone-trigger")
                         .ghost()
-                        .w(px(41.))
-                        .h(px(41.))
+                        .w(crate::ui::constants::toolbar_trigger_size())
+                        .h(crate::ui::constants::toolbar_trigger_size())
                         .child(
-                            Icon::default()
+Icon::default()
                                 .path("phone.svg")
-                                .w(px(21.))
-                                .h(px(21.))
+                                .w(crate::ui::constants::icon_md())
+                                .h(crate::ui::constants::icon_md())
                                 .text_color(theme.muted_foreground),
                         ),
                 )
-                .content(move |window, cx| {
-                    // 内层再 clone，供 PopoverContent 的 move 闭包使用
-                    let phone_video_hovered = phone_video_hovered.clone();
-                    let phone_voice_hovered = phone_voice_hovered.clone();
+.content(move |window, cx| {
+                    // 每次打开 Popover 时重置 hover 状态
+                    let phone_video_hovered = cx.new(|_| false);
+                    let phone_voice_hovered = cx.new(|_| false);
 
                     cx.new(|cx| {
                         PopoverContent::new(window, cx, move |_, cx| {
@@ -157,7 +124,7 @@ impl ToolBar {
                                 .child({
                                     let hovered = *phone_video_hovered.read(cx);
                                     let state = phone_video_hovered.clone();
-                                    ToolBar::render_hover_menu_item(
+                                    crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                         "phone-video-call",
                                         "视频通话",
                                         hovered,
@@ -173,7 +140,7 @@ impl ToolBar {
                                 .child({
                                     let hovered = *phone_voice_hovered.read(cx);
                                     let state = phone_voice_hovered.clone();
-                                    ToolBar::render_hover_menu_item(
+                                    crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                         "phone-voice-call",
                                         "语音通话",
                                         hovered,
@@ -194,55 +161,8 @@ impl ToolBar {
         )
     }
 
-    fn render_hover_menu_item<FSet, L>(
-        id: &'static str,
-        label: &'static str,
-        hovered: bool,
-        set_hover: FSet,
-        on_mouse_down: L,
-    ) -> impl IntoElement
-    where
-        FSet: Fn(bool, &mut App) + Clone + 'static,
-        L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
-    {
-        div()
-            .id(id)
-            .w_full()
-            .px_3()
-            .py_2()
-            .rounded(px(4.))
-            .cursor_pointer()
-            .text_sm()
-            .when(hovered, |this| this.bg(rgb(0x07C160))) // WeChat green - keep hardcoded
-            .on_hover(move |&is_hovering, _, cx| {
-                set_hover(is_hovering, cx);
-            })
-            .on_mouse_down(gpui::MouseButton::Left, on_mouse_down)
-            .child(
-                div()
-                    .when(hovered, |this| this.text_color(gpui::white()))
-                    .child(label),
-            )
-    }
-
     fn render_menu_button(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // 为每个菜单项创建 hover 状态
-        let video_live_hovered = window.use_keyed_state("menu-video-live-hover", cx, |_, _| false);
-        let chat_files_hovered = window.use_keyed_state("menu-chat-files-hover", cx, |_, _| false);
-        let chat_history_hovered =
-            window.use_keyed_state("menu-chat-history-hover", cx, |_, _| false);
-        let lock_hovered = window.use_keyed_state("menu-lock-hover", cx, |_, _| false);
-        let feedback_hovered = window.use_keyed_state("menu-feedback-hover", cx, |_, _| false);
-        let settings_hovered = window.use_keyed_state("menu-settings-hover", cx, |_, _| false);
-
-        // Clone for closure capture
-        let video_live_hovered = video_live_hovered.clone();
-        let chat_files_hovered = chat_files_hovered.clone();
-        let chat_history_hovered = chat_history_hovered.clone();
-        let lock_hovered = lock_hovered.clone();
-        let feedback_hovered = feedback_hovered.clone();
-        let settings_hovered = settings_hovered.clone();
-
         let theme = cx.theme();
 
         div()
@@ -257,29 +177,30 @@ impl ToolBar {
                     .trigger(
                         Button::new("menu-trigger")
                             .ghost()
-                            .w(px(41.))
-                            .h(px(41.))
+                            .w(crate::ui::constants::toolbar_trigger_size())
+                            .h(crate::ui::constants::toolbar_trigger_size())
                             .child(
-                                Icon::default()
+Icon::default()
                                     .path("menu.svg")
-                                    .w(px(21.))
-                                    .h(px(21.))
+                                    .w(crate::ui::constants::icon_md())
+                                    .h(crate::ui::constants::icon_md())
                                     .text_color(theme.muted_foreground),
                             ),
                     )
-                    .content(move |window, cx| {
+.content(move |window, cx| {
                         let theme_popover = cx.theme().popover;
-                        let video_live_hovered = video_live_hovered.clone();
-                        let chat_files_hovered = chat_files_hovered.clone();
-                        let chat_history_hovered = chat_history_hovered.clone();
-                        let lock_hovered = lock_hovered.clone();
-                        let feedback_hovered = feedback_hovered.clone();
-                        let settings_hovered = settings_hovered.clone();
+                        // 每次打开 Popover 时重置 hover 状态
+                        let video_live_hovered = cx.new(|_| false);
+                        let chat_files_hovered = cx.new(|_| false);
+                        let chat_history_hovered = cx.new(|_| false);
+                        let lock_hovered = cx.new(|_| false);
+                        let feedback_hovered = cx.new(|_| false);
+                        let settings_hovered = cx.new(|_| false);
                         cx.new(|cx| {
                             PopoverContent::new(window, cx, move |_, cx| {
                                 let theme = cx.theme();
                                 v_flex()
-                                    .w(px(130.))
+                                    .w(crate::ui::constants::toolbar_popover_width())
                                     .gap_0()
                                     .py_2()
                                     .text_color(theme.foreground)
@@ -287,7 +208,7 @@ impl ToolBar {
                                         let hovered = *video_live_hovered.read(cx);
                                         let state = video_live_hovered.clone();
 
-                                        ToolBar::render_hover_menu_item(
+                                        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                             "menu-video-live",
                                             "视频号直播伴侣",
                                             hovered,
@@ -307,7 +228,7 @@ impl ToolBar {
                                         let hovered = *chat_files_hovered.read(cx);
                                         let state = chat_files_hovered.clone();
 
-                                        ToolBar::render_hover_menu_item(
+                                        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                             "menu-chat-files",
                                             "聊天文件",
                                             hovered,
@@ -315,8 +236,7 @@ impl ToolBar {
                                                 state.update(cx, |s, _| *s = is_hovering);
                                             },
                                             cx.listener(|_, _, window, cx| {
-                                                window
-                                                    .push_notification("聊天文件功能开发中...", cx);
+                                                window.push_notification("聊天文件功能开发中...", cx);
                                                 cx.emit(DismissEvent);
                                             }),
                                         )
@@ -325,7 +245,7 @@ impl ToolBar {
                                         let hovered = *chat_history_hovered.read(cx);
                                         let state = chat_history_hovered.clone();
 
-                                        ToolBar::render_hover_menu_item(
+                                        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                             "menu-chat-history",
                                             "聊天记录管理",
                                             hovered,
@@ -345,7 +265,7 @@ impl ToolBar {
                                         let hovered = *lock_hovered.read(cx);
                                         let state = lock_hovered.clone();
 
-                                        ToolBar::render_hover_menu_item(
+                                        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                             "menu-lock",
                                             "锁定",
                                             hovered,
@@ -362,7 +282,7 @@ impl ToolBar {
                                         let hovered = *feedback_hovered.read(cx);
                                         let state = feedback_hovered.clone();
 
-                                        ToolBar::render_hover_menu_item(
+                                        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                             "menu-feedback",
                                             "意见反馈",
                                             hovered,
@@ -370,8 +290,7 @@ impl ToolBar {
                                                 state.update(cx, |s, _| *s = is_hovering);
                                             },
                                             cx.listener(|_, _, window, cx| {
-                                                window
-                                                    .push_notification("意见反馈功能开发中...", cx);
+                                                window.push_notification("意见反馈功能开发中...", cx);
                                                 cx.emit(DismissEvent);
                                             }),
                                         )
@@ -380,7 +299,7 @@ impl ToolBar {
                                         let hovered = *settings_hovered.read(cx);
                                         let state = settings_hovered.clone();
 
-                                        ToolBar::render_hover_menu_item(
+                                        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                             "menu-settings",
                                             "设置",
                                             hovered,
@@ -403,40 +322,6 @@ impl ToolBar {
                     }),
             )
     }
-
-    fn on_settings(&mut self, _: &Settings, _: &mut Window, cx: &mut Context<Self>) {
-        cx.emit(OpenSettingsEvent);
-    }
-
-    fn on_video_live(
-        &mut self,
-        _: &VideoLiveCompanion,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        window.push_notification("视频号直播伴侣功能开发中...", cx);
-    }
-
-    fn on_chat_files(&mut self, _: &ChatFiles, window: &mut Window, cx: &mut Context<Self>) {
-        window.push_notification("聊天文件功能开发中...", cx);
-    }
-
-    fn on_chat_history(
-        &mut self,
-        _: &ChatHistoryManagement,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        window.push_notification("聊天记录管理功能开发中...", cx);
-    }
-
-    fn on_lock(&mut self, _: &Lock, window: &mut Window, cx: &mut Context<Self>) {
-        window.push_notification("锁定功能开发中...", cx);
-    }
-
-    fn on_feedback(&mut self, _: &Feedback, window: &mut Window, cx: &mut Context<Self>) {
-        window.push_notification("意见反馈功能开发中...", cx);
-    }
 }
 
 impl Render for ToolBar {
@@ -445,13 +330,7 @@ impl Render for ToolBar {
 
         v_flex()
             .bg(weixin_colors.toolbar_bg) // 左侧工具栏背景 EDEDED
-            .on_action(cx.listener(Self::on_settings))
-            .on_action(cx.listener(Self::on_video_live))
-            .on_action(cx.listener(Self::on_chat_files))
-            .on_action(cx.listener(Self::on_chat_history))
-            .on_action(cx.listener(Self::on_lock))
-            .on_action(cx.listener(Self::on_feedback))
-            .w(px(67.))
+            .w(crate::ui::constants::toolbar_width())
             .h_full()
             .items_center()
             .py_2()

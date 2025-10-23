@@ -1,19 +1,17 @@
 use gpui::{
-    div, prelude::FluentBuilder, px, relative, rgb, AnyElement, App, AppContext, Context, Entity,
-    Hsla, InteractiveElement, IntoElement, ParentElement, Pixels, Render,
-    StatefulInteractiveElement, Styled, Window,
+div, px, AnyElement, App, AppContext, Context, Entity, InteractiveElement,
+    IntoElement, ParentElement, Pixels, Render, Styled, StatefulInteractiveElement, Window,
 };
 use gpui_component::{
-    avatar::Avatar,
-    button::{Button, ButtonCustomVariant, ButtonVariants},
+    button::{Button, ButtonVariants},
     h_flex,
     highlighter::Language,
     input::{InputState, TabSize, TextInput},
-    v_flex, ActiveTheme, Icon, IconName, Sizable,
+    v_flex, ActiveTheme,
 };
 
 use crate::models::{ChatSession, Message};
-use crate::theme::{Theme, WeixinThemeColors};
+use crate::ui::theme::Theme;
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
@@ -21,7 +19,6 @@ pub struct ChatArea {
     on_send_message: Option<Box<dyn Fn(String) + 'static>>,
     // Zed-like manual sizing (no ResizableState coupling)
     current_input_height: Pixels,
-    default_input_height: Pixels,
     min_input_height: Pixels,
     max_input_height: Pixels,
     is_resizing: bool,
@@ -31,7 +28,7 @@ pub struct ChatArea {
 
 impl ChatArea {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let default_height = px(200.);
+        let default_height = crate::ui::constants::chat_input_default_height();
 
         let input_state = cx.new(|cx| {
             InputState::new(window, cx)
@@ -48,9 +45,8 @@ impl ChatArea {
             input_state,
             on_send_message: None,
             current_input_height: default_height,
-            default_input_height: default_height,
-            min_input_height: px(120.),
-            max_input_height: px(420.),
+            min_input_height: crate::ui::constants::chat_input_min_height(),
+            max_input_height: crate::ui::constants::chat_input_max_height(),
             is_resizing: false,
             drag_start_y: px(0.),
             drag_start_height: default_height,
@@ -97,76 +93,6 @@ impl ChatArea {
         });
     }
 
-    fn render_message(&self, message: &Message, cx: &mut Context<Self>) -> impl IntoElement {
-        let is_self = message.is_self;
-        let time_str = message.timestamp.format("%H:%M").to_string();
-        let is_group = self
-            .current_session
-            .as_ref()
-            .map(|s| s.contact.is_group)
-            .unwrap_or(false);
-        let theme = cx.theme();
-        let weixin_colors = Theme::weixin_colors(cx);
-
-        div().w_full().px_5().py_2().child(
-            div()
-                .flex()
-                .w_full()
-                .when(is_self, |this| this.flex_row_reverse())
-                .gap_3()
-                .child(Avatar::new().with_size(px(35.)).rounded(px(5.)))
-                .child(
-                    v_flex()
-                        .gap_1p5()
-                        .max_w(px(480.))
-                        .when(is_self, |this| this.items_end())
-                        .child(
-                            // 时间戳和发送者名称（群组中显示）
-                            h_flex()
-                                .gap_2()
-                                .when(is_self, |this| this.flex_row_reverse())
-                                .when(is_group && !is_self, |this| {
-                                    this.child(
-                                        div()
-                                            .text_xs()
-                                            .text_color(theme.muted_foreground)
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .child(message.sender_name.clone()),
-                                    )
-                                })
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(theme.muted_foreground)
-                                        .child(time_str),
-                                ),
-                        )
-                        .child(
-                            // 消息气泡
-                            div().relative().child(
-                                div()
-                                    .px_3()
-                                    .py_2()
-                                    .rounded(px(4.))
-                                    .bg(if is_self {
-                                        weixin_colors.message_bubble_self
-                                    } else {
-                                        weixin_colors.message_bubble_other
-                                    })
-                                    .text_color(if is_self {
-                                        weixin_colors.message_text_self
-                                    } else {
-                                        weixin_colors.message_text_other
-                                    })
-                                    .text_base()
-                                    .line_height(relative(1.6))
-                                    .child(message.content.clone()),
-                            ),
-                        ),
-                ),
-        )
-    }
-
     fn render_input_area(&self, cx: &mut Context<Self>) -> AnyElement {
         let theme = cx.theme();
 
@@ -174,32 +100,11 @@ impl ChatArea {
             .size_full()
             .child(
                 // 工具栏
-                div().w_full().px_3().py_1p5().child(
-                    h_flex()
-                        .w_full()
-                        .items_center()
-                        .child(
-                            // 左侧图标组
-                            h_flex()
-                                .gap_2()
-                                .child(self.icon_button("emoji.svg", theme))
-                                .child(self.icon_button("favorite.svg", theme))
-                                .child(self.icon_button("file.svg", theme))
-                                .child(self.icon_button("scissors.svg", theme))
-                                .child(self.narrow_icon_button("down.svg", theme)),
-                        )
-                        .child(
-                            // 中间空白区域
-                            div().flex_1(),
-                        )
-                        .child(
-                            // 右侧图标组
-                            h_flex()
-                                .gap_2()
-                                .child(self.icon_button("circle.svg", theme))
-                                .child(self.icon_button("video-call.svg", theme)),
-                        ),
-                ),
+                div()
+                    .w_full()
+                    .px_3()
+                    .py_1p5()
+                    .child(crate::ui::widgets::chat_toolbar::chat_toolbar(theme)),
             )
             .child(
                 // 输入框容器 - 占据剩余空间，内部自动滚动
@@ -225,43 +130,6 @@ impl ChatArea {
             )
             .into_any_element()
     }
-
-    fn icon_button(&self, path: &'static str, theme: &gpui_component::Theme) -> impl IntoElement {
-        div()
-            .p(px(6.))
-            .rounded(px(4.))
-            .cursor_pointer()
-            .hover(|this| this.bg(theme.secondary))
-            .child(
-                Icon::default()
-                    .path(path)
-                    .w(px(20.))
-                    .h(px(20.))
-                    .text_color(theme.muted_foreground),
-            )
-    }
-
-    fn narrow_icon_button(
-        &self,
-        path: &'static str,
-        theme: &gpui_component::Theme,
-    ) -> impl IntoElement {
-        h_flex()
-            .p(px(6.))
-            .rounded(px(4.))
-            .justify_center()
-            .items_center()
-            .cursor_pointer()
-            .w(px(15.))
-            .hover(|this| this.bg(theme.secondary))
-            .child(
-                Icon::default()
-                    .path(path)
-                    .w(px(20.))
-                    .h(px(20.))
-                    .text_color(theme.muted_foreground),
-            )
-    }
 }
 
 impl ChatArea {
@@ -271,7 +139,7 @@ impl ChatArea {
         self.drag_start_height = self.current_input_height;
     }
 
-    fn update_resize(&mut self, window: &mut Window, cx: &mut Context<Self>, current_y: Pixels) {
+fn update_resize(&mut self, _window: &mut Window, cx: &mut Context<Self>, current_y: Pixels) {
         if !self.is_resizing {
             return;
         }
@@ -302,17 +170,14 @@ impl Render for ChatArea {
         let bg_color = weixin_colors.chat_area_bg; // 右侧聊天区域背景 EDEDED
 
         let messages_view = if let Some(session) = &self.current_session {
-            v_flex()
-                .w_full()
-                .pt_4()
-                .pb_2()
-                .children(
-                    session
-                        .messages
-                        .iter()
-                        .map(|msg| self.render_message(msg, cx)),
-                )
-                .into_any_element()
+            let is_group = session.contact.is_group;
+            crate::ui::widgets::message_list::message_list(
+                &session.messages,
+                is_group,
+                theme,
+                &weixin_colors,
+            )
+            .into_any_element()
         } else {
             div()
                 .size_full()
@@ -358,7 +223,7 @@ impl Render for ChatArea {
             .child(
                 // 分隔条：用于拖拽调整输入区高度（外层加大检测区域）
                 div()
-                    .h(px(8.)) // 较大的检测区域
+                    .h(crate::ui::constants::drag_handle_height()) // 较大的检测区域
                     .w_full()
                     .flex()
                     .bg(bg_color)
@@ -373,7 +238,7 @@ impl Render for ChatArea {
                     )
                     .child(
                         // 内层实际显示的1px分割线
-                        div().h(px(1.)).w_full().bg(border_color),
+                        div().h(crate::ui::constants::hairline()).w_full().bg(border_color),
                     ),
             )
             .child(

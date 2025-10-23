@@ -1,4 +1,4 @@
-use crate::theme::{Theme, ThemeMode, WeixinThemeColors};
+use crate::ui::theme::{Theme, ThemeMode};
 use gpui::{prelude::FluentBuilder, DismissEvent, EventEmitter, *};
 use gpui_component::{
     button::Button,
@@ -17,6 +17,7 @@ enum SettingsTab {
     About,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum FontSize {
     Small,
@@ -84,7 +85,7 @@ impl SettingsWindow {
 
     fn render_account_and_storage(&self, cx: &Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
-        let weixin_colors = Theme::weixin_colors(cx);
+        let _weixin_colors = Theme::weixin_colors(cx);
 
         v_flex()
             .gap_6()
@@ -114,9 +115,9 @@ impl SettingsWindow {
                                     .gap_3()
                                     .child(
                                         div()
-                                            .w(px(50.))
-                                            .h(px(50.))
-                                            .rounded(px(4.))
+                                            .w(crate::ui::constants::settings_avatar_size())
+                                            .h(crate::ui::constants::settings_avatar_size())
+                                            .rounded(crate::ui::constants::radius_sm())
                                             .bg(theme.secondary),
                                     )
                                     .child(
@@ -206,7 +207,7 @@ impl SettingsWindow {
             .child(
                 div()
                     .bg(card_bg)
-                    .rounded(px(8.))
+                    .rounded(crate::ui::constants::radius_lg())
                     .border_1()
                     .border_color(border_color)
                     .p_4()
@@ -233,7 +234,12 @@ impl SettingsWindow {
                             // 外观设置
                             .child(self.render_theme_setting(theme_mode, window, cx))
                             // 分割线
-                            .child(div().w_full().h(px(1.)).bg(border_color))
+                            .child(
+                                div()
+                                    .w_full()
+                                    .h(crate::ui::constants::hairline())
+                                    .bg(border_color),
+                            )
                             // 字体大小设置
                             .child(
                                 h_flex()
@@ -333,9 +339,9 @@ impl SettingsWindow {
                     .items_center()
                     .child(
                         div()
-                            .w(px(80.))
-                            .h(px(80.))
-                            .rounded(px(8.))
+                            .w(crate::ui::constants::about_logo_size())
+                            .h(crate::ui::constants::about_logo_size())
+                            .rounded(crate::ui::constants::radius_lg())
                             .bg(weixin_colors.weixin_green)
                             .flex()
                             .items_center()
@@ -395,13 +401,6 @@ impl SettingsWindow {
     ) -> impl IntoElement {
         let weixin_colors = Theme::weixin_colors(cx);
 
-        // 创建 hover 状态
-        let light_hovered = window.use_keyed_state("theme-light-hover", cx, |_, _| false);
-        let dark_hovered = window.use_keyed_state("theme-dark-hover", cx, |_, _| false);
-
-        let light_hovered = light_hovered.clone();
-        let dark_hovered = dark_hovered.clone();
-
         Popover::new("theme-popover")
             .anchor(gpui::Corner::BottomLeft)
             .trigger(
@@ -416,7 +415,7 @@ impl SettingsWindow {
                         })
                         .child(
                             div()
-                                .p(px(1.5))
+                                .p(crate::ui::constants::icon_badge_padding_xs())
                                 .rounded_sm()
                                 .bg(weixin_colors.weixin_green)
                                 .child(
@@ -429,15 +428,16 @@ impl SettingsWindow {
             )
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
-                let light_hovered = light_hovered.clone();
-                let dark_hovered = dark_hovered.clone();
+                // 每次打开 Popover 时重置 hover 状态
+                let light_hovered = cx.new(|_| false);
+                let dark_hovered = cx.new(|_| false);
 
                 cx.new(|cx| {
                     PopoverContent::new(window, cx, move |_, cx| {
                         let theme = cx.theme();
 
                         v_flex()
-                            .w(px(100.))
+                            .w(crate::ui::constants::popover_width_sm())
                             .gap_0()
                             .py_2()
                             .text_color(theme.foreground)
@@ -481,7 +481,7 @@ impl SettingsWindow {
                     })
                     .p_1()
                     .bg(theme_popover)
-                    .rounded(px(6.))
+                    .rounded(crate::ui::constants::radius_md())
                     .shadow_md()
                 })
             })
@@ -562,42 +562,18 @@ impl SettingsWindow {
             .py_2()
             .child(div().text_sm().text_color(theme.foreground).child(label))
             .child(
-                div().px_3().py_1().rounded(px(4.)).bg(theme.muted).child(
-                    div()
-                        .text_xs()
-                        .text_color(theme.muted_foreground)
-                        .child(shortcut),
-                ),
-            )
-    }
-
-    fn render_arrow_button(&self, label: &'static str, cx: &Context<Self>) -> impl IntoElement {
-        let weixin_colors = Theme::weixin_colors(cx);
-        Button::new(label)
-            .xsmall()
-            .outline()
-            .child(
-                h_flex()
-                    .items_center()
-                    .gap_2()
-                    .text_xs()
-                    .child(label)
+                div()
+                    .px_3()
+                    .py_1()
+                    .rounded(crate::ui::constants::radius_sm())
+                    .bg(theme.muted)
                     .child(
                         div()
-                            .p(px(1.5))
-                            .rounded_sm()
-                            .bg(weixin_colors.weixin_green)
-                            .child(
-                                Icon::default()
-                                    .path("arrow.svg")
-                                    .text_color(gpui::rgb(0xffffff)),
-                            ),
+                            .text_xs()
+                            .text_color(theme.muted_foreground)
+                            .child(shortcut),
                     ),
             )
-            .on_click(cx.listener(|_this, _ev, _window, cx| {
-                // 这里可以添加按钮点击的逻辑
-                println!("查看图片按钮被点击");
-            }))
     }
 
     fn render_static_language_item<FSet, L>(
@@ -636,16 +612,6 @@ impl SettingsWindow {
         let current_language = self.current_language.clone();
         let weixin_colors = Theme::weixin_colors(cx);
 
-        // 创建 hover 状态
-        let chinese_hovered = window.use_keyed_state("lang-chinese-hover", cx, |_, _| false);
-        let traditional_hovered =
-            window.use_keyed_state("lang-traditional-hover", cx, |_, _| false);
-        let english_hovered = window.use_keyed_state("lang-english-hover", cx, |_, _| false);
-
-        let chinese_hovered = chinese_hovered.clone();
-        let traditional_hovered = traditional_hovered.clone();
-        let english_hovered = english_hovered.clone();
-
         Popover::new("language-popover")
             .anchor(gpui::Corner::BottomRight)
             .trigger(
@@ -657,7 +623,7 @@ impl SettingsWindow {
                         .child(current_language.clone())
                         .child(
                             div()
-                                .p(px(1.5))
+                                .p(crate::ui::constants::icon_badge_padding_xs())
                                 .rounded_sm()
                                 .bg(weixin_colors.weixin_green)
                                 .child(
@@ -670,16 +636,17 @@ impl SettingsWindow {
             )
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
-                let chinese_hovered = chinese_hovered.clone();
-                let traditional_hovered = traditional_hovered.clone();
-                let english_hovered = english_hovered.clone();
+                // 每次打开 Popover 时重置 hover 状态
+                let chinese_hovered = cx.new(|_| false);
+                let traditional_hovered = cx.new(|_| false);
+                let english_hovered = cx.new(|_| false);
 
                 cx.new(|cx| {
                     PopoverContent::new(window, cx, move |_, cx| {
                         let theme = cx.theme();
 
                         v_flex()
-                            .w(px(120.))
+                            .w(crate::ui::constants::popover_width_md())
                             .gap_0()
                             .py_2()
                             .text_color(theme.foreground)
@@ -754,15 +721,6 @@ impl SettingsWindow {
         };
         let weixin_colors = Theme::weixin_colors(cx);
 
-        // 创建 hover 状态
-        let small_hovered = window.use_keyed_state("font-small-hover", cx, |_, _| false);
-        let standard_hovered = window.use_keyed_state("font-standard-hover", cx, |_, _| false);
-        let large_hovered = window.use_keyed_state("font-large-hover", cx, |_, _| false);
-
-        let small_hovered = small_hovered.clone();
-        let standard_hovered = standard_hovered.clone();
-        let large_hovered = large_hovered.clone();
-
         Popover::new("font-size-popover")
             .anchor(gpui::Corner::BottomRight)
             .trigger(
@@ -787,16 +745,17 @@ impl SettingsWindow {
             )
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
-                let small_hovered = small_hovered.clone();
-                let standard_hovered = standard_hovered.clone();
-                let large_hovered = large_hovered.clone();
+                // 每次打开 Popover 时重置 hover 状态
+                let small_hovered = cx.new(|_| false);
+                let standard_hovered = cx.new(|_| false);
+                let large_hovered = cx.new(|_| false);
 
                 cx.new(|cx| {
                     PopoverContent::new(window, cx, move |_, cx| {
                         let theme = cx.theme();
 
                         v_flex()
-                            .w(px(100.))
+                            .w(crate::ui::constants::popover_width_sm())
                             .gap_0()
                             .py_2()
                             .text_color(theme.foreground)
@@ -936,7 +895,7 @@ impl Render for SettingsWindow {
             .child(
                 // 左侧区域（包括标题栏和导航栏）
                 v_flex()
-                    .w(px(200.))
+                    .w(crate::ui::constants::settings_sidebar_width())
                     .h_full()
                     .bg(left_bg)
                     .border_r_1()
@@ -977,7 +936,7 @@ impl Render for SettingsWindow {
                         // 右侧标题栏
                         h_flex()
                             .w_full()
-                            .h(px(48.))
+                            .h(crate::ui::constants::settings_title_height())
                             .items_center()
                             .child(
                                 // 可拖动区域
@@ -994,7 +953,7 @@ impl Render for SettingsWindow {
                                     .items_center()
                                     .justify_center()
                                     .h_full()
-                                    .w(px(48.))
+                                    .w(crate::ui::constants::settings_close_button_width())
                                     .window_control_area(WindowControlArea::Close)
                                     .cursor_pointer()
                                     .hover(move |s| s.bg(close_hover).text_color(gpui::white()))

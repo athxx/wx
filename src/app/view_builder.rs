@@ -1,16 +1,14 @@
 use crate::app::state::WeixinApp;
-use crate::theme::{Theme, WeixinThemeColors};
+use crate::ui::theme::Theme;
 use gpui::{
-    div, prelude::FluentBuilder, px, rgb, Context, InteractiveElement, IntoElement, ParentElement,
-    Render, StatefulInteractiveElement, Styled, Window, WindowControlArea,
+    div, px, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
+    WindowControlArea,
 };
 use gpui_component::{
     avatar::Avatar,
-    button::{Button, ButtonVariants},
     h_flex,
-    input::TextInput,
     resizable::{h_resizable, resizable_panel},
-    v_flex, ActiveTheme, ContextModal, Icon, Sizable,
+    v_flex, ActiveTheme,
 };
 
 impl Render for WeixinApp {
@@ -26,11 +24,12 @@ impl Render for WeixinApp {
 impl WeixinApp {
     /// 渲染标题栏
     fn render_title_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        use crate::ui::constants as UI;
         let current_chat_title = self.get_current_chat_title();
 
         h_flex()
             .w_full()
-            .h(px(67.))
+            .h(UI::title_bar_height())
             .items_center()
             .child(self.render_user_avatar(cx))
             .child(
@@ -40,8 +39,11 @@ impl WeixinApp {
                 )
                 .child(
                     resizable_panel()
-                        .size(px(200.))
-                        .size_range(px(200.)..px(400.))
+                        .size(crate::ui::constants::session_list_min_width())
+                        .size_range(
+                            crate::ui::constants::session_list_min_width()
+                                ..crate::ui::constants::session_list_max_width(),
+                        )
                         .child(self.render_search_area(cx)),
                 )
                 .child(resizable_panel().child(self.render_chat_header(
@@ -54,79 +56,29 @@ impl WeixinApp {
 
     /// 渲染用户头像
     fn render_user_avatar(&self, cx: &Context<Self>) -> impl IntoElement {
+        use crate::ui::constants as UI;
         let weixin_colors = Theme::weixin_colors(cx);
         div()
             .window_control_area(WindowControlArea::Drag)
-            .w(px(67.))
+            .w(UI::toolbar_width())
             .h_full()
-            .bg(weixin_colors.toolbar_bg)  // 左侧工具栏背景
+            .bg(weixin_colors.toolbar_bg) // 左侧工具栏背景
             .flex()
             .items_center()
             .justify_center()
             .child(
                 Avatar::new()
-                    .w(px(40.))
-                    .h(px(40.))
-                    .rounded(px(6.))
+                    .w(crate::ui::constants::title_avatar_size())
+                    .h(crate::ui::constants::title_avatar_size())
+                    .rounded(crate::ui::constants::radius_md())
                     .name("HL"),
             )
     }
 
     /// 渲染搜索区域
     fn render_search_area(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        let weixin_colors = Theme::weixin_colors(cx);
-
-        div()
-            .bg(weixin_colors.session_list_bg)  // 中间会话列表背景
-            .size_full()
-            .window_control_area(WindowControlArea::Drag)
-            .flex()
-            .border_l_1()
-            .border_color(theme.border)
-            .items_center()
-            .px_3()
-            .gap_2()
-            .child(
-                div()
-                    .flex_1()
-                    .bg(weixin_colors.search_bar_bg)  // 搜索框背景 EDEDED
-                    .rounded(px(4.))
-                    .py_1()
-                    .child(
-                        TextInput::new(&self.session_list.read(cx).search_input)
-                            .xsmall()
-                            .prefix(
-                                div().px_1().child(
-                                    Icon::default()
-                                        .path("search2.svg")
-                                        .text_color(theme.muted_foreground)
-                                        .xsmall(),
-                                ),
-                            )
-                            .text_xs()
-                            .cleanable()
-                            .appearance(false),
-                    ),
-            )
-            .child(
-                // 加号按钮
-                h_flex()
-                    .bg(weixin_colors.search_bar_bg)  // 加号背景 EDEDED
-                    .rounded(px(4.))
-                    .w(px(28.))
-                    .h(px(28.))
-                    .justify_center()
-                    .items_center()
-                    .hover(move |s| s.bg(weixin_colors.item_hover))  // hover颜色 EAEAEA
-                    .child(
-                        Icon::default()
-                            .path("plus.svg")
-                            .w(px(16.))
-                            .h(px(16.))
-                            .text_color(theme.foreground),
-                    ),
-            )
+        let search_input = self.session_list.read(cx).search_input.clone();
+        crate::ui::widgets::search_area::search_area(&search_input, cx)
     }
 
     /// 渲染聊天头部（单行布局）
@@ -141,10 +93,11 @@ impl WeixinApp {
         let is_maximized = window.is_maximized();
         let title_text = title.to_string();
 
+        use crate::ui::constants as UI;
         h_flex()
-            .h(px(67.)) // 与左侧高度一致
+            .h(UI::title_bar_height()) // 与左侧高度一致
             .w_full()
-            .bg(weixin_colors.chat_area_bg)  // 右侧聊天区域背景 EDEDED
+            .bg(weixin_colors.chat_area_bg) // 右侧聊天区域背景 EDEDED
             .items_center()
             .child(
                 // 左侧：标题和功能按钮
@@ -164,195 +117,16 @@ impl WeixinApp {
                     .h_full()
                     .flex_col()
                     .items_center()
-                    .child(self.render_window_controls(is_maximized, theme))
-                    .child(
-                        h_flex()
-                            .window_control_area(WindowControlArea::Drag)
-                            .flex_1()
-                            .w_full()
-                            .items_center()
-                            .justify_end()
-                            .pr_2()
-                            .child(
-                                div()
-                                    .p(px(5.))
-                                    .rounded(px(6.))
-                                    .cursor_pointer()
-                                    .hover(|this| this.bg(theme.secondary))
-                                    .child(
-                                        Icon::default()
-                                            .w(px(20.))
-                                            .h(px(20.))
-                                            .path("chat.svg")
-                                            .text_color(theme.foreground),
-                                    ),
-                            )
-                            .child(
-                                h_flex()
-                                    .p(px(5.))
-                                    .rounded(px(6.))
-                                    .justify_center()
-                                    .items_center()
-                                    .mr_2()
-                                    .cursor_pointer()
-                                    .w(px(15.))
-                                    .h(px(33.))
-                                    .hover(|this| this.bg(theme.secondary))
-                                    .child(
-                                        Icon::default()
-                                            .path("down.svg")
-                                            .w(px(20.))
-                                            .h(px(20.))
-                                            .text_color(theme.foreground),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .p(px(5.))
-                                    .rounded(px(6.))
-                                    .cursor_pointer()
-                                    .hover(|this| this.bg(theme.secondary))
-                                    .child(
-                                        Icon::default()
-                                            .w(px(20.))
-                                            .h(px(20.))
-                                            .path("ellipses.svg")
-                                            .text_color(theme.foreground),
-                                    ),
-                            ),
-                    ),
-            )
-    }
-
-    /// 渲染窗口控制按钮
-    fn render_window_controls(
-        &self,
-        is_maximized: bool,
-        theme: &gpui_component::Theme,
-    ) -> impl IntoElement {
-        h_flex()
-            .h_8()
-            .items_center()
-            // 固定按钮
-            .child(self.render_window_button(
-                "win-btn-pin",
-                "nail.svg",
-                WindowControlArea::Min,
-                theme,
-            ))
-            // 最小化按钮
-            .child(self.render_window_button(
-                "win-btn-min",
-                "window-minimize.svg",
-                WindowControlArea::Min,
-                theme,
-            ))
-            // 最大化/还原按钮
-            .child(self.render_window_button(
-                "win-btn-max",
-                if is_maximized {
-                    "window-restore.svg"
-                } else {
-                    "window-maximize.svg"
-                },
-                WindowControlArea::Max,
-                theme,
-            ))
-            // 关闭按钮
-            .child(
-                div()
-                    .id("win-btn-close")
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .h_full()
-                    .w(px(45.))
-                    .window_control_area(WindowControlArea::Close)
-                    .cursor_pointer()
-                    .hover(|s| s.bg(rgb(0xe81123)).text_color(gpui::white()))
-                    .child(
-                        Icon::default()
-                            .path("window-close.svg")
-                            .text_color(theme.foreground)
-                            .xsmall(),
-                    ),
-            )
-    }
-
-    /// 渲染单个窗口控制按钮
-    fn render_window_button(
-        &self,
-        id: &'static str,
-        icon: &'static str,
-        control: WindowControlArea,
-        theme: &gpui_component::Theme,
-    ) -> impl IntoElement {
-        div()
-            .id(id)
-            .flex()
-            .items_center()
-            .justify_center()
-            .h_full()
-            .w(px(45.))
-            .window_control_area(control)
-            .cursor_pointer()
-            .hover(|s| s.bg(theme.secondary))
-            .child(
-                Icon::default()
-                    .path(icon)
-                    .text_color(theme.foreground)
-                    .xsmall(),
-            )
-    }
-
-    /// 渲染功能按钮行
-    fn render_action_buttons(&self, theme: &gpui_component::Theme) -> impl IntoElement {
-        h_flex()
-            .h(px(32.))
-            .w_full()
-            .window_control_area(WindowControlArea::Drag)
-            .items_center()
-            .justify_end()
-            .pr_3()
-            .child(
-                h_flex()
-                    .h_full()
-                    .items_center()
-                    .child(
-                        Button::new("chat-btn")
-                            .icon(
-                                Icon::default()
-                                    .path("chat.svg")
-                                    .text_color(theme.foreground),
-                            )
-                            .ghost()
-                            .xsmall(),
-                    )
-                    .child(
-                        Button::new("down-btn")
-                            .icon(
-                                Icon::default()
-                                    .path("down.svg")
-                                    .text_color(theme.foreground),
-                            )
-                            .ghost()
-                            .xsmall(),
-                    )
-                    .child(
-                        Button::new("more-btn")
-                            .icon(
-                                Icon::default()
-                                    .path("ellipses.svg")
-                                    .text_color(theme.foreground),
-                            )
-                            .ghost()
-                            .xsmall(),
-                    ),
+                    .child(crate::ui::widgets::window_controls::window_controls(
+                        is_maximized,
+                        theme,
+                    ))
+                    .child(crate::ui::widgets::chat_header_actions::chat_header_actions(theme)),
             )
     }
 
     /// 渲染主内容区域
-    fn render_main_content(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn render_main_content(&self, _cx: &Context<Self>) -> impl IntoElement {
         h_flex()
             .flex_1()
             .w_full()
@@ -365,8 +139,11 @@ impl WeixinApp {
                 )
                 .child(
                     resizable_panel()
-                        .size(px(200.))
-                        .size_range(px(200.)..px(400.))
+                        .size(crate::ui::constants::session_list_min_width())
+                        .size_range(
+                            crate::ui::constants::session_list_min_width()
+                                ..crate::ui::constants::session_list_max_width(),
+                        )
                         .child(self.session_list.clone()),
                 )
                 .child(resizable_panel().child(self.chat_area.clone())),

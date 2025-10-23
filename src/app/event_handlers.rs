@@ -1,10 +1,9 @@
+use crate::app::events::AppEvent;
 use crate::app::state::WeixinApp;
-use crate::components::settings_window::SettingsWindow;
+use crate::components::SettingsWindow;
 use crate::components::{SessionList, ToolBar};
-use crate::domain::events::{OpenSettingsEvent, SessionSelectEvent, ToolbarClickEvent};
 use gpui::{
-    px, App, AppContext, Bounds, Context, Entity, Size, Window, WindowBounds, WindowKind,
-    WindowOptions,
+    px, App, AppContext, Bounds, Context, Entity, Size, WindowBounds, WindowKind, WindowOptions,
 };
 use gpui_component::{Root, TitleBar};
 
@@ -16,38 +15,29 @@ impl WeixinApp {
         cx: &mut Context<Self>,
     ) {
         // 订阅工具栏点击事件
-        cx.subscribe(
-            toolbar,
-            |_this, _toolbar, event: &ToolbarClickEvent, _cx| {
-                println!("Toolbar item clicked: {:?}", event.item);
-            },
-        )
+        cx.subscribe(toolbar, |_this, _toolbar, event: &AppEvent, _cx| {
+            if let AppEvent::ToolbarClicked { item } = event {
+                println!("Toolbar item clicked: {:?}", item);
+            }
+        })
         .detach();
 
         // 订阅会话选择事件
-        cx.subscribe(
-            session_list,
-            |this, _list, event: &SessionSelectEvent, cx| {
-                this.on_session_selected(&event.contact_id, cx);
-            },
-        )
+        cx.subscribe(session_list, |this, _list, event: &AppEvent, cx| {
+            if let AppEvent::SessionSelected { contact_id } = event {
+                this.on_session_selected(contact_id, cx);
+            }
+        })
         .detach();
 
         // 订阅工具栏设置事件
-        cx.subscribe(
-            toolbar,
-            |_this, _toolbar, _event: &OpenSettingsEvent, cx| {
-                Self::open_settings_window(cx);
-            },
-        )
-        .detach();
     }
 
     /// 打开设置窗口
     pub fn open_settings_window(cx: &mut App) {
         let window_size = Size {
-            width: px(550.0),
-            height: px(680.0),
+            width: crate::ui::constants::settings_window_width(),
+            height: crate::ui::constants::settings_window_height(),
         };
 
         let window_bounds = Bounds::centered(None, window_size, cx);
@@ -56,8 +46,8 @@ impl WeixinApp {
             window_bounds: Some(WindowBounds::Windowed(window_bounds)),
             titlebar: Some(TitleBar::title_bar_options()),
             window_min_size: Some(Size {
-                width: px(550.),
-                height: px(680.),
+                width: crate::ui::constants::settings_window_width(),
+                height: crate::ui::constants::settings_window_height(),
             }),
             window_decorations: Some(gpui::WindowDecorations::Server),
             kind: WindowKind::Normal,
