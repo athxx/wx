@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 gpui = "0.2.0"
-gpui-component = { path = "../gpui-component/crates/ui",features = ["tree-sitter-languages"] }
+gpui-component = { version = "0.2.0", features = ["tree-sitter-languages"] }
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
