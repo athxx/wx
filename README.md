@@ -1,8 +1,9 @@
 # WeChat Desktop Clone
 
 A WeChat desktop UI clone built with [gpui](https://github.com/zed-industries/gpui) for learning purposes.
-<img width="1884" height="990" alt="image" src="https://github.com/user-attachments/assets/b2ae5335-490d-4580-8b0d-7adf8742736e" />
-<img width="1869" height="984" alt="image" src="https://github.com/user-attachments/assets/03e2b133-0125-4bb7-ae21-8ef9c8263ef0" />
+<img width="2181" height="993" alt="image" src="https://github.com/user-attachments/assets/ba9b43ab-2529-40d3-b6c0-3ad25037fd81" />
+<img width="2178" height="1011" alt="image" src="https://github.com/user-attachments/assets/2b19a4f9-db6e-4053-ab1e-d698cc9227d7" />
+
 
 
 ## Features
@@ -32,5 +33,6 @@ cargo build --release
 ## License
 
 Learning project only
+
 
 
