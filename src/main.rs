@@ -18,6 +18,10 @@ fn main() {
 
     app.run(move |cx| {
         gpui_component::init(cx);
+        
+        // 应用微信主题的光标颜色
+        let colors = crate::ui::theme::WeixinThemeColors::light();
+        gpui_component::Theme::global_mut(cx).caret = colors.caret;
 
         cx.activate(true);
 
