@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gpui = "0.2.0"
-gpui-component = { version = "0.2.0", features = ["tree-sitter-languages"] }
+gpui = "0.2.2"
+gpui-component = { version = "0.3.1", features = ["tree-sitter-languages"] }
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
