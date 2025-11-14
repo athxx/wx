@@ -195,28 +195,33 @@ impl Render for ChatArea {
         let border_color = theme.border;
         let bg_color = weixin_colors.chat_area_bg;
 
-        // 没有选中会话时：只显示居中的微信图标，不渲染消息列表和输入框。
+        // 没有选中会话时：右侧只显示居中的微信图标，不显示消息和输入框。
         if self.current_session.is_none() {
             let icon_color = no_session_text_color.opacity(0.35);
 
-            return v_flex().flex_1().size_full().bg(bg_color).child(
-                h_flex()
-                    .flex_1()
-                    .items_center()
-                    .justify_center()
-                    .window_control_area(WindowControlArea::Drag)
-                    .child(
-                        Icon::default()
-                            .path("weixin.svg")
-                            .w(px(100.))
-                            .h(px(100.))
-                            .text_color(icon_color),
-                    ),
-            );
+            return v_flex()
+                .flex_1()
+                .size_full()
+                .bg(bg_color)
+                .child(
+                    h_flex()
+                        .flex_1()
+                        .items_center()
+                        .justify_center()
+                        .window_control_area(WindowControlArea::Drag)
+                        .child(
+                            Icon::default()
+                                .path("weixin.svg")
+                                .w(px(100.))
+                                .h(px(100.))
+                                .text_color(icon_color),
+                        ),
+                );
         }
 
         // 选中会话时：上面是消息列表（可滚动），下面是拖动条 + 输入框。
-        let messages_view = if let Some(session) = &self.current_session {
+        let messages_view = {
+            let session = self.current_session.as_ref().unwrap();
             let is_group = session.contact.is_group;
             crate::ui::widgets::message_list::message_list(
                 &session.messages,
@@ -225,17 +230,6 @@ impl Render for ChatArea {
                 &weixin_colors,
             )
             .into_any_element()
-        } else {
-            // 理论上不会走到这里，留个兜底
-            div()
-                .size_full()
-                .flex()
-                .items_center()
-                .justify_center()
-                .text_color(no_session_text_color)
-                .text_base()
-                .child("请选择一个会话开始聊天")
-                .into_any_element()
         };
 
         v_flex()
@@ -245,8 +239,6 @@ impl Render for ChatArea {
             .on_mouse_up(
                 gpui::MouseButton::Left,
                 cx.listener(|this, _evt: &gpui::MouseUpEvent, _window, cx| {
-                    // 结束 ChatArea 的垂直拖动，但允许事件继续冒泡，
-                    // 这样父级 fixed_resizable 仍然能处理水平分割线的拖动。
                     this.end_resize(_window, cx);
                 }),
             )
@@ -254,18 +246,17 @@ impl Render for ChatArea {
                 cx.listener(|this, evt: &gpui::MouseMoveEvent, _window, cx| {
                     let y = evt.position.y;
                     this.update_resize(_window, cx, y);
-                    // 不拦截事件，让父级也能收到 on_mouse_move 用于左右分割线拖动。
                 }),
             )
             .child(
-                v_flex()
+                div()
                     .id("chat-messages")
                     .flex_1()
                     .w_full()
                     .bg(bg_color)
+                    .overflow_y_scroll()
                     .border_t_1()
                     .border_color(border_color)
-                    .scrollable(Axis::Vertical)
                     .child(messages_view),
             )
             .child(
@@ -281,7 +272,6 @@ impl Render for ChatArea {
                         cx.listener(|this, evt: &gpui::MouseDownEvent, window, cx| {
                             let y = evt.position.y;
                             this.begin_resize(window, cx, y);
-                            // 拦截按下事件，避免透传到输入框等控件
                             cx.stop_propagation();
                         }),
                     )
