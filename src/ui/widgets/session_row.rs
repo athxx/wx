@@ -76,11 +76,11 @@ pub fn session_row_content(
                 .child(
                     div()
                         .w_full()
-                        .text_sm()
+                        .text_xs() // 标题下面的预览文字更小一点
                         .text_color(theme.muted_foreground)
                         .overflow_hidden()
                         .whitespace_nowrap()
-                        .text_ellipsis()
+                        .text_ellipsis() // 超出部分使用省略号
                         .child({
                             let message = contact
                                 .last_message

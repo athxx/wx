@@ -115,7 +115,7 @@ pub fn title_avatar_size() -> Pixels {
     px(40.)
 }
 pub fn drag_handle_height() -> Pixels {
-    px(8.)
+    px(4.)
 }
 pub fn hairline() -> Pixels {
     px(1.)

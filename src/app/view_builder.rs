@@ -26,6 +26,7 @@ impl WeixinApp {
     fn render_title_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::constants as UI;
         let current_chat_title = self.get_current_chat_title();
+        let has_session = !current_chat_title.is_empty();
 
         h_flex()
             .w_full()
@@ -44,6 +45,7 @@ impl WeixinApp {
                 .left(self.render_search_area(cx))
                 .right(self.render_chat_header(
                     &current_chat_title,
+                    has_session,
                     window,
                     cx,
                 )),
@@ -78,6 +80,7 @@ impl WeixinApp {
     fn render_chat_header(
         &self,
         title: &str,
+        has_session: bool,
         window: &Window,
         cx: &Context<Self>,
     ) -> impl IntoElement {
@@ -87,31 +90,58 @@ impl WeixinApp {
         let title_text = title.to_string();
 
         use crate::ui::constants as UI;
+
+        // 左侧：拖动区域 + 可选标题文本
+        let left_header: gpui::AnyElement = if has_session {
+            h_flex()
+                .window_control_area(WindowControlArea::Drag)
+                .h_full()
+                .flex_1()
+                .items_center()
+                .pl_3()
+                .child(div().text_color(theme.foreground).child(title_text))
+                .into_any_element()
+        } else {
+            h_flex()
+                .window_control_area(WindowControlArea::Drag)
+                .h_full()
+                .flex_1()
+                .items_center()
+                .pl_3()
+                .into_any_element()
+        };
+
+        // 右侧：窗口控制按钮 + （仅在有会话时）聊天头部按钮
+        let right_header: gpui::AnyElement = if has_session {
+            h_flex()
+                .h_full()
+                .flex_col()
+                .items_center()
+                .child(crate::ui::widgets::window_controls::window_controls(
+                    is_maximized,
+                    theme,
+                ))
+                .child(crate::ui::widgets::chat_header_actions::chat_header_actions(theme))
+                .into_any_element()
+        } else {
+            h_flex()
+                .h_full()
+                .flex_col()
+                .items_center()
+                .child(crate::ui::widgets::window_controls::window_controls(
+                    is_maximized,
+                    theme,
+                ))
+                .into_any_element()
+        };
+
         h_flex()
             .h(UI::title_bar_height())
             .w_full()
             .bg(weixin_colors.chat_area_bg)
             .items_center()
-            .child(
-                h_flex()
-                    .window_control_area(WindowControlArea::Drag)
-                    .h_full()
-                    .flex_1()
-                    .items_center()
-                    .pl_3()
-                    .child(div().text_color(theme.foreground).child(title_text)),
-            )
-            .child(
-                h_flex()
-                    .h_full()
-                    .flex_col()
-                    .items_center()
-                    .child(crate::ui::widgets::window_controls::window_controls(
-                        is_maximized,
-                        theme,
-                    ))
-                    .child(crate::ui::widgets::chat_header_actions::chat_header_actions(theme)),
-            )
+            .child(left_header)
+            .child(right_header)
     }
 
     fn render_main_content(&self, _cx: &Context<Self>) -> impl IntoElement {

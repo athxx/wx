@@ -37,6 +37,14 @@ pub fn create_sample_contacts() -> Vec<Contact> {
         Contact::new("5", "钱七"),
     ];
 
+    // 额外生成一些联系人，方便测试会话列表滚动条。
+    for i in 0..20 {
+        contacts.push(Contact::new(
+            format!("auto{}", i),
+            format!("自动联系人 {}", i + 1),
+        ));
+    }
+
     for (i, contact) in contacts.iter_mut().enumerate() {
         if contact.is_group {
             contact.last_sender_name = Some(
@@ -60,7 +68,7 @@ pub fn create_sample_contacts() -> Vec<Contact> {
 pub fn create_sample_messages(contact: &Contact) -> Vec<Message> {
     let base_time = Local::now() - chrono::Duration::hours(2);
 
-    vec![
+    let mut messages = vec![
         Message {
             id: "1".into(),
             sender_id: contact.id.clone(),
@@ -101,5 +109,29 @@ pub fn create_sample_messages(contact: &Contact) -> Vec<Message> {
             timestamp: base_time + chrono::Duration::minutes(5),
             is_self: false,
         },
-    ]
+    ];
+
+    // 追加更多示例消息，方便测试聊天区域滚动条。
+    for i in 0..40 {
+        let is_self = i % 2 == 0;
+        let (sender_id, sender_name) = if is_self {
+            ("self".to_string(), "我".to_string())
+        } else {
+            (contact.id.clone(), contact.name.clone())
+        };
+
+        messages.push(Message {
+            id: format!("{}", i + 6),
+            sender_id,
+            sender_name,
+            content: format!(
+                "测试消息 {}：这是一个较长的示例消息内容，用来测试滚动条效果。",
+                i + 1
+            ),
+            timestamp: base_time + chrono::Duration::minutes(10 + i as i64),
+            is_self,
+        });
+    }
+
+    messages
 }

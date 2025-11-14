@@ -1,3 +1,3 @@
-pub use view::ChatArea;
+pub use view::{ChatArea, ChatAreaEvent};
 
 pub mod view;

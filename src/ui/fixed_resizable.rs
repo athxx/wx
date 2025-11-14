@@ -20,7 +20,13 @@ use gpui::InteractiveElement as _;
 use gpui_component::ActiveTheme as _;
 use std::ops::Range;
 
-const HANDLE_WIDTH: Pixels = px(5.);
+const HANDLE_WIDTH: Pixels = px(6.);
+
+/// 分隔状态的事件，目前仅在松开鼠标时发送一次 Resized 用于持久化。
+#[derive(Clone, Debug)]
+pub enum FixedResizableEvent {
+    Resized,
+}
 
 /// 固定像素宽度的可拖动分隔状态
 ///
@@ -48,7 +54,7 @@ impl FixedResizableState {
     }
 }
 
-impl EventEmitter<()> for FixedResizableState {}
+impl EventEmitter<FixedResizableEvent> for FixedResizableState {}
 
 /// 创建一个水平分隔：左固定宽度，右自适应
 pub fn fixed_h_resizable(
@@ -99,6 +105,8 @@ impl FixedResizableGroup {
 impl RenderOnce for FixedResizableGroup {
     fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
+        // 使用 theme.border 作为分割线颜色，使左右分割线与聊天区域上下分割线保持一致（约 d5d5d5）
+        let handle_color = theme.border;
         let state = self.state.clone();
         let left_width = state.read(cx).left_width;
         let min_width = self.min_width;
@@ -112,11 +120,13 @@ impl RenderOnce for FixedResizableGroup {
             .flex_1()
             .relative()
             .size_full()
-            // 左侧固定宽度区域
+            // 左侧固定宽度区域（右侧加一条可见边框，方便看见分割线）
             .child(
                 gpui::div()
                     .w(left_width)
                     .h_full()
+                    .border_r_1()
+                    .border_color(handle_color)
                     .children(self.left_child),
             )
             // 中间分隔条：只负责显示和开始拖动（记录起始位置），具体宽度更新在容器的 on_mouse_move 中完成
@@ -124,25 +134,29 @@ impl RenderOnce for FixedResizableGroup {
                 let state = state.clone();
                 gpui::div()
                     .absolute()
-                    // 让 1px 的竖线刚好落在会话列表和聊天区域的边界上
-                    // 父容器宽度 HANDLE_WIDTH，子元素是 w(px(1.))，默认贴左侧，所以 left = left_width
+                    // 分隔条的左边正好在会话列表和聊天区域的边界上
                     .left(left_width)
                     .top_0()
                     .w(HANDLE_WIDTH)
                     .h_full()
                     .cursor_col_resize()
-.on_mouse_down(MouseButton::Left, move |e: &MouseDownEvent, _window: &mut Window, cx: &mut App| {
-                        state.update(cx, |s, _| {
-                            s.dragging = true;
-                            s.drag_start_x = e.position.x;
-                            s.drag_start_width = s.left_width;
-                        });
-                    })
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        move |e: &MouseDownEvent, _window: &mut Window, cx: &mut App| {
+                            state.update(cx, |s, _cx| {
+                                s.dragging = true;
+                                s.drag_start_x = e.position.x;
+                                s.drag_start_width = s.left_width;
+                            });
+                            // 阻止事件继续向下传播，避免点击/拖动透传到下面的内容区域或窗口拖动区域
+                            cx.stop_propagation();
+                        },
+                    )
+                    // 拖动区域本身透明，只提供命中范围；真正的 1px 竖线由左侧容器的 border_r_1 提供
                     .child(
                         gpui::div()
-                            .w(px(1.))
-                            .h_full()
-                            .bg(theme.border),
+                            .w(HANDLE_WIDTH)
+                            .h_full(),
                     )
             })
             // 右侧自适应区域：使用 flex 列布局并占满可用空间，
@@ -167,14 +181,18 @@ impl RenderOnce for FixedResizableGroup {
                             cx.notify();
                         }
                     });
+                    // 注意：这里不阻止事件传播，避免影响标题栏里的窗口控制按钮（最小化/最大化/关闭）。
                 }
             })
             .on_mouse_up(MouseButton::Left, {
                 let state = state.clone();
                 move |_e: &MouseUpEvent, _window: &mut Window, cx: &mut App| {
-                    state.update(cx, |s, _| {
+                    state.update(cx, |s, cx| {
                         s.dragging = false;
+                        // 通知监听者当前分隔状态已更新，可用于持久化。
+                        cx.emit(FixedResizableEvent::Resized);
                     });
+                    // 同样不在这里拦截事件，让 WindowControlArea 按钮能正常处理鼠标抬起。
                 }
             })
     }

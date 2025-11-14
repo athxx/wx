@@ -1,66 +1,9 @@
-use crate::app::events::AppEvent;
 use crate::app::state::WeixinApp;
-use crate::components::SettingsWindow;
-use crate::components::{SessionList, ToolBar};
-use gpui::{
-    App, AppContext, Bounds, Context, Entity, Size, WindowBounds, WindowKind, WindowOptions,
-};
-use gpui_component::{Root, TitleBar};
+use gpui::App;
 
 impl WeixinApp {
-    pub(super) fn setup_event_subscriptions(
-        toolbar: &Entity<ToolBar>,
-        session_list: &Entity<SessionList>,
-        cx: &mut Context<Self>,
-    ) {
-        cx.subscribe(toolbar, |_this, _toolbar, event: &AppEvent, _cx| {
-            if let AppEvent::ToolbarClicked { item } = event {
-                println!("Toolbar item clicked: {:?}", item);
-            }
-        })
-        .detach();
-
-        cx.subscribe(session_list, |this, _list, event: &AppEvent, cx| {
-            if let AppEvent::SessionSelected { contact_id } = event {
-                this.on_session_selected(contact_id, cx);
-            }
-        })
-        .detach();
-    }
-
+    /// 对外暴露的打开设置窗口接口，内部委托给 app::bootstrap，统一窗口创建路径。
     pub fn open_settings_window(cx: &mut App) {
-        use crate::components::settings::window::SETTINGS_WINDOW_OPEN;
-        use std::sync::atomic::Ordering;
-
-        if SETTINGS_WINDOW_OPEN.load(Ordering::SeqCst) {
-            return;
-        }
-
-        SETTINGS_WINDOW_OPEN.store(true, Ordering::SeqCst);
-
-        let window_size = Size {
-            width: crate::ui::constants::settings_window_width(),
-            height: crate::ui::constants::settings_window_height(),
-        };
-
-        let window_bounds = Bounds::centered(None, window_size, cx);
-
-        let options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(window_bounds)),
-            titlebar: Some(TitleBar::title_bar_options()),
-            window_min_size: Some(Size {
-                width: crate::ui::constants::settings_window_width(),
-                height: crate::ui::constants::settings_window_height(),
-            }),
-            window_decorations: Some(gpui::WindowDecorations::Server),
-            kind: WindowKind::Normal,
-            ..Default::default()
-        };
-
-        cx.open_window(options, |window, cx| {
-            let settings_view = SettingsWindow::view(window, cx);
-            cx.new(|cx| Root::new(settings_view.into(), window, cx))
-        })
-        .ok();
+        crate::app::bootstrap::open_settings_window(cx);
     }
 }

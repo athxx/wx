@@ -1,21 +1,18 @@
 use gpui::{
-    div, App, AppContext, Context, Entity, EventEmitter, InteractiveElement, IntoElement,
-    ParentElement, Render, StatefulInteractiveElement, Styled, Window,
+    div, App, AppContext, Axis, Context, Entity, InteractiveElement, IntoElement, ParentElement,
+    Render, StatefulInteractiveElement, Styled, Window,
 };
-use gpui_component::{input::InputState, v_flex, ActiveTheme};
+use gpui_component::{input::InputState, v_flex, ActiveTheme, StyledExt as _};
 
 use crate::models::Contact;
 use crate::ui::theme::Theme;
-
-use crate::app::events::AppEvent;
+use crate::app::actions::SelectSession;
 
 pub struct SessionList {
     contacts: Vec<Contact>,
     selected_id: Option<String>,
     pub search_input: Entity<InputState>,
 }
-
-impl EventEmitter<AppEvent> for SessionList {}
 
 impl SessionList {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -89,11 +86,26 @@ impl SessionList {
                 }
             })
             .cursor_pointer()
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.selected_id = Some(contact_id.clone());
-                cx.emit(AppEvent::SessionSelected {
-                    contact_id: contact_id.clone(),
-                });
+            .on_click(cx.listener(move |this, _, window, cx| {
+                // 再次点击已选中的会话 -> 取消选中；否则选中该会话
+                let toggling_off = this
+                    .selected_id
+                    .as_ref()
+                    .map(|id| id == &contact_id)
+                    .unwrap_or(false);
+
+                if toggling_off {
+                    this.selected_id = None;
+                } else {
+                    this.selected_id = Some(contact_id.clone());
+                }
+
+                window.dispatch_action(
+                    Box::new(SelectSession {
+                        contact_id: contact_id.clone(),
+                    }),
+                    cx,
+                );
                 cx.notify();
             }))
             .child(crate::ui::widgets::session_row::session_row_content(
@@ -115,17 +127,16 @@ impl Render for SessionList {
             .bg(weixin_colors.session_list_bg)
             .border_color(theme.border)
             .child(
-                div()
+                v_flex()
                     .id("session-list-scroll")
-                    .size_full()
-                    .overflow_y_scroll()
-                    .child(
-                        v_flex().children(
-                            self.contacts
-                                .iter()
-                                .enumerate()
-                                .map(|(i, contact)| self.render_session_item(contact, i, cx)),
-                        ),
+                    .w_full()
+                    .h_full()
+                    .scrollable(Axis::Vertical)
+                    .children(
+                        self.contacts
+                            .iter()
+                            .enumerate()
+                            .map(|(i, contact)| self.render_session_item(contact, i, cx)),
                     ),
             )
     }

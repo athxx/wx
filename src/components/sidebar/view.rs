@@ -1,7 +1,6 @@
 use gpui::{
-    div, App, AppContext, Context, Corner, DismissEvent, Element, Entity, EventEmitter,
-    InteractiveElement, IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled,
-    Window,
+    div, App, AppContext, Context, Corner, DismissEvent, Element, Entity, InteractiveElement,
+    IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
@@ -13,13 +12,11 @@ use crate::ui::theme::Theme;
 
 use crate::models::ToolbarItem;
 
-use crate::app::events::AppEvent;
+use crate::app::actions::ToolbarClicked;
 
 pub struct ToolBar {
     active_item: ToolbarItem,
 }
-
-impl EventEmitter<AppEvent> for ToolBar {}
 
 impl ToolBar {
     pub fn new(_window: &mut Window, _cx: &mut Context<Self>) -> Self {
@@ -75,9 +72,9 @@ impl ToolBar {
                     .rounded(crate::ui::constants::radius_md())
                     .cursor_pointer()
                     .hover(|this| this.bg(theme.secondary))
-                    .on_click(cx.listener(move |this, _, _, cx| {
+                    .on_click(cx.listener(move |this, _, window, cx| {
                         this.active_item = item;
-                        cx.emit(AppEvent::ToolbarClicked { item });
+                        window.dispatch_action(Box::new(ToolbarClicked { item }), cx);
                         cx.notify();
                     }))
                     .child(
