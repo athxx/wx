@@ -3,7 +3,7 @@ use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
 use crate::ui::theme::Theme;
 use gpui::{App, AppContext, Context, Entity, Window};
-use gpui_component::resizable::ResizableState;
+use crate::ui::fixed_resizable::FixedResizableState;
 
 pub struct WeixinApp {
     pub toolbar: Entity<ToolBar>,
@@ -15,7 +15,8 @@ pub struct WeixinApp {
     pub contacts: Vec<Contact>,
     pub current_session: Option<ChatSession>,
 
-    pub session_resizable_state: Entity<ResizableState>,
+    /// 固定左侧宽度的 resizable 状态（用于顶部搜索栏 + 左侧会话列表）
+    pub session_split_state: Entity<FixedResizableState>,
 
     pub(crate) _theme_observer: Option<gpui::Subscription>,
 }
@@ -35,7 +36,8 @@ impl WeixinApp {
             list.set_contacts(contacts.clone(), cx);
         });
 
-        let session_resizable_state = ResizableState::new(cx);
+        // 固定分隔状态，左侧宽度用绝对像素表示
+        let session_split_state = FixedResizableState::new(cx);
 
         Self::setup_event_subscriptions(&toolbar, &session_list, cx);
 
@@ -50,7 +52,7 @@ impl WeixinApp {
             sessions_repo,
             contacts,
             current_session: None,
-            session_resizable_state,
+            session_split_state,
             _theme_observer: Some(theme_observer),
         }
     }

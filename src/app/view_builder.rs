@@ -1,5 +1,6 @@
 use crate::app::state::WeixinApp;
 use crate::ui::theme::Theme;
+use crate::ui::fixed_resizable::{fixed_h_resizable};
 use gpui::{
     div, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     WindowControlArea,
@@ -7,7 +8,6 @@ use gpui::{
 use gpui_component::{
     avatar::Avatar,
     h_flex,
-    resizable::{h_resizable, resizable_panel},
     v_flex, ActiveTheme,
 };
 
@@ -33,24 +33,20 @@ impl WeixinApp {
             .items_center()
             .child(self.render_user_avatar(cx))
             .child(
-                h_resizable(
+                fixed_h_resizable(
                     "title-search-resizable",
-                    self.session_resizable_state.clone(),
+                    self.session_split_state.clone(),
                 )
-                .child(
-                    resizable_panel()
-                        .size(crate::ui::constants::session_list_min_width())
-                        .size_range(
-                            crate::ui::constants::session_list_min_width()
-                                ..crate::ui::constants::session_list_max_width(),
-                        )
-                        .child(self.render_search_area(cx)),
+                .width_range(
+                    crate::ui::constants::session_list_min_width()
+                        ..crate::ui::constants::session_list_max_width(),
                 )
-                .child(resizable_panel().child(self.render_chat_header(
+                .left(self.render_search_area(cx))
+                .right(self.render_chat_header(
                     &current_chat_title,
                     window,
                     cx,
-                ))),
+                )),
             )
     }
 
@@ -125,20 +121,16 @@ impl WeixinApp {
             .overflow_hidden()
             .child(self.toolbar.clone())
             .child(
-                h_resizable(
+                fixed_h_resizable(
                     "session-list-resizable",
-                    self.session_resizable_state.clone(),
+                    self.session_split_state.clone(),
                 )
-                .child(
-                    resizable_panel()
-                        .size(crate::ui::constants::session_list_min_width())
-                        .size_range(
-                            crate::ui::constants::session_list_min_width()
-                                ..crate::ui::constants::session_list_max_width(),
-                        )
-                        .child(self.session_list.clone()),
+                .width_range(
+                    crate::ui::constants::session_list_min_width()
+                        ..crate::ui::constants::session_list_max_width(),
                 )
-                .child(resizable_panel().child(self.chat_area.clone())),
+                .left(self.session_list.clone())
+                .right(self.chat_area.clone()),
             )
     }
 }

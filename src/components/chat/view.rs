@@ -188,6 +188,7 @@ impl Render for ChatArea {
 
         v_flex()
             .flex_1()
+            .size_full()
             .bg(bg_color)
             .on_mouse_up(
                 gpui::MouseButton::Left,
