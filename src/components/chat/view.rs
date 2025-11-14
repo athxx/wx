@@ -199,24 +199,20 @@ impl Render for ChatArea {
         if self.current_session.is_none() {
             let icon_color = no_session_text_color.opacity(0.35);
 
-            return v_flex()
-                .flex_1()
-                .size_full()
-                .bg(bg_color)
-                .child(
-                    h_flex()
-                        .flex_1()
-                        .items_center()
-                        .justify_center()
-                        .window_control_area(WindowControlArea::Drag)
-                        .child(
-                            Icon::default()
-                                .path("weixin.svg")
-                                .w(px(100.))
-                                .h(px(100.))
-                                .text_color(icon_color),
-                        ),
-                );
+            return v_flex().flex_1().size_full().bg(bg_color).child(
+                h_flex()
+                    .flex_1()
+                    .items_center()
+                    .justify_center()
+                    .window_control_area(WindowControlArea::Drag)
+                    .child(
+                        Icon::default()
+                            .path("weixin.svg")
+                            .w(px(100.))
+                            .h(px(100.))
+                            .text_color(icon_color),
+                    ),
+            );
         }
 
         // 选中会话时：上面是消息列表（可滚动），下面是拖动条 + 输入框。
