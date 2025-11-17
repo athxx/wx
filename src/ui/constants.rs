@@ -12,7 +12,9 @@ pub fn settings_sidebar_width() -> Pixels {
     px(200.)
 }
 pub fn settings_title_height() -> Pixels {
-    px(48.)
+    // Use the same height as the main window title bar so the settings close button
+    // has the same height as the main window close button.
+    px(67. / 2.)
 }
 
 pub fn window_button_width() -> Pixels {

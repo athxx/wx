@@ -45,15 +45,7 @@ impl ChatArea {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let default_input_height = crate::ui::constants::chat_input_default_height();
 
-        let input_state = cx.new(|cx| {
-            InputState::new(window, cx)
-                .code_editor(Language::Markdown)
-                .line_number(false)
-                .tab_size(TabSize {
-                    tab_size: 2,
-                    ..Default::default()
-                })
-        });
+        let input_state = cx.new(|cx| InputState::new(window, cx).auto_grow(1, 1));
 
         Self {
             current_session: None,
