@@ -3,6 +3,7 @@ use crate::ui::theme::{Theme, ThemeMode};
 use crate::ui::widgets::setting_card;
 use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
+    avatar::Avatar,
     button::Button,
     h_flex,
     popover::Popover,
@@ -166,101 +167,167 @@ impl SettingsWindow {
 
     fn render_account_and_storage(&self, cx: &Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
-        let _weixin_colors = Theme::weixin_colors(cx);
+        let foreground = theme.foreground;
+        let muted = theme.muted_foreground;
 
-        v_flex()
-            .gap_6()
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.foreground)
-                    .child("账号与存储"),
-            )
-            .child(
+        // 顶部账号信息 + 自动登录/保留聊天记录卡片
+        let account_card = {
+            let avatar_and_info = h_flex()
+                .items_center()
+                .gap_3()
+                .child(
+                    // 与标题栏 render_user_avatar 中一致的头像风格和尺寸
+                    Avatar::new()
+                        .w(crate::ui::constants::title_avatar_size())
+                        .h(crate::ui::constants::title_avatar_size())
+                        .rounded(crate::ui::constants::radius_md())
+                        .src(crate::ui::avatar::avatar_for_key("self")),
+                )
+                .child(
+                    v_flex()
+                        .gap_1()
+                        .child(div().text_sm().text_color(foreground).child("@@@"))
+                        .child(div().text_xs().text_color(muted).child("H1548772930")),
+                );
+
+            let header_row = h_flex()
+                .items_center()
+                .justify_between()
+                .child(avatar_and_info)
+                .child(
+                    Button::new("settings-account-logout")
+                        .small()
+                        .bg(gpui::rgb(0xEAEAEA))
+                        .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
+                        .child("退出登录"),
+                );
+
+            let auto_login_row = h_flex()
+                .items_center()
+                .justify_between()
+                .py_2()
+                .child(
+                    v_flex()
+                        .gap_1()
+                        .child(div().text_sm().text_color(foreground).child("自动登录"))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(muted)
+                                .child("在本机登录微信将无需手机确认。"),
+                        ),
+                )
+                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
+
+            let keep_history_row = h_flex()
+                .items_center()
+                .justify_between()
+                .py_2()
+                .child(
+                    v_flex()
+                        .gap_1()
+                        .child(div().text_sm().text_color(foreground).child("保留聊天记录"))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(muted)
+                                .child("退出登录时保留本机聊天记录。"),
+                        ),
+                )
+                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
+
+            crate::ui::widgets::setting_card::card(
+                cx,
                 v_flex()
-                    .gap_4()
-                    .child(
-                        v_flex()
-                            .gap_2()
-                            .child(crate::ui::widgets::setting_card::section_title(
-                                cx,
-                                "账号信息",
-                            ))
-                            .child(
-                                h_flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .child(
-                                        div()
-                                            .w(crate::ui::constants::settings_avatar_size())
-                                            .h(crate::ui::constants::settings_avatar_size())
-                                            .rounded(crate::ui::constants::radius_sm())
-                                            .bg(theme.secondary),
-                                    )
-                                    .child(
-                                        v_flex()
-                                            .gap_1()
-                                            .child(
-                                                div()
-                                                    .text_sm()
-                                                    .text_color(theme.foreground)
-                                                    .child("用户名"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.muted_foreground)
-                                                    .child("微信号: wxid_123456"),
-                                            ),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        v_flex()
-                            .gap_2()
-                            .child(crate::ui::widgets::setting_card::section_title(
-                                cx,
-                                "文件存储",
-                            ))
-                            .child(
-                                v_flex()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(theme.muted_foreground)
-                                            .child("文件存储位置"),
-                                    )
-                                    .child(
-                                        h_flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .text_color(theme.muted_foreground)
-                                                    .child("C:\\Users\\Documents\\WeChat Files"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .px_2()
-                                                    .py_1()
-                                                    .rounded(crate::ui::constants::radius_sm())
-                                                    .bg(theme.secondary)
-                                                    .cursor_pointer()
-                                                    .hover(|s| s.bg(theme.secondary_hover))
-                                                    .child(
-                                                        div()
-                                                            .text_xs()
-                                                            .text_color(theme.foreground)
-                                                            .child("更改"),
-                                                    ),
-                                            ),
-                                    ),
-                            ),
-                    ),
+                    .gap_0()
+                    .child(header_row)
+                    .child(crate::ui::widgets::setting_card::divider(cx))
+                    .child(auto_login_row)
+                    .child(crate::ui::widgets::setting_card::divider(cx))
+                    .child(keep_history_row),
             )
+        };
+
+        // 存储空间 + 存储位置 + 自动下载 + 清空聊天记录卡片
+        let storage_card = {
+            let storage_space_row = h_flex()
+                .items_center()
+                .justify_between()
+                .py_4()
+                .child(div().text_sm().text_color(foreground).child("存储空间"))
+                .child(
+                    Button::new("settings-storage-manage")
+                        .small()
+                        .bg(gpui::rgb(0xEAEAEA))
+                        .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
+                        .child("管理"),
+                );
+
+            let path_row = v_flex()
+                .gap_1()
+                .py_4()
+                .child(div().text_sm().text_color(foreground).child("存储位置"))
+                .child(
+                    h_flex()
+                        .items_center()
+                        .justify_between()
+                        .child(div().text_xs().text_color(muted).child("D\\wxwechat_files"))
+                        .child(
+                            Button::new("settings-storage-change")
+                                .small()
+                                .bg(gpui::rgb(0xEAEAEA))
+                                .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
+                                .child("更改"),
+                        ),
+                );
+
+            let auto_download_row = h_flex()
+                .items_center()
+                .justify_between()
+                .py_4()
+                .child(
+                    h_flex()
+                        .items_center()
+                        .gap_2()
+                        .child(div().text_sm().text_color(foreground).child("自动下载小于"))
+                        .child(
+                            div()
+                                .w(px(40.))
+                                .h(px(24.))
+                                .rounded(crate::ui::constants::radius_sm())
+                                .bg(theme.secondary)
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(div().text_sm().text_color(foreground).child("20")),
+                        )
+                        .child(div().text_sm().text_color(foreground).child("MB的文件")),
+                )
+                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
+
+            let clear_button_row = h_flex().justify_end().py_4().child(
+                Button::new("settings-clear-messages")
+                    .small()
+                    .bg(gpui::rgb(0xEAEAEA))
+                    .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
+                    .label("清空全部聊天记录"),
+            );
+
+            crate::ui::widgets::setting_card::card(
+                cx,
+                v_flex()
+                    .gap_0()
+                    .child(storage_space_row)
+                    .child(crate::ui::widgets::setting_card::divider(cx))
+                    .child(path_row)
+                    .child(crate::ui::widgets::setting_card::divider(cx))
+                    .child(auto_download_row)
+                    .child(crate::ui::widgets::setting_card::divider(cx))
+                    .child(clear_button_row),
+            )
+        };
+
+        v_flex().gap_6().child(account_card).child(storage_card)
     }
 
     fn render_general_settings(
@@ -884,6 +951,35 @@ impl SettingsWindow {
             _ => "tab-unknown",
         };
 
+        // 为每个设置页 tab 配置一个图标，图标文件位于 assets/setting 目录下。
+        let icon_path = match ix {
+            // 账号与存储
+            0 => "setting/user.svg",
+            // 通用
+            1 => "setting/setting.svg",
+            // 快捷键
+            2 => "setting/arrow-up9.svg",
+            // 通知
+            3 => "setting/notifications.svg",
+            // 插件
+            4 => "setting/risk.svg",
+            // 关于微信
+            5 => "setting/about.svg",
+            _ => "setting/setting.svg",
+        };
+
+        let content = h_flex()
+            .items_center()
+            .gap_2()
+            .child(
+                Icon::default()
+                    .path(icon_path)
+                    .w(crate::ui::constants::icon_sm())
+                    .h(crate::ui::constants::icon_sm())
+                    .text_color(text_color),
+            )
+            .child(div().text_sm().text_color(text_color).child(label));
+
         div()
             .id(tab_id)
             .w_full()
@@ -896,7 +992,7 @@ impl SettingsWindow {
             .on_click(cx.listener(move |this, _ev, _window, cx| {
                 this.set_active_tab(ix, _window, cx);
             }))
-            .child(div().text_sm().text_color(text_color).child(label))
+            .child(content)
     }
 }
 

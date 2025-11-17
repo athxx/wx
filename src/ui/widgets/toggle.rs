@@ -24,3 +24,27 @@ pub fn toggle(cx: &App, enabled: bool) -> impl IntoElement {
                 .when(enabled, |this| this.ml_auto()),
         )
 }
+
+/// 较小号的开关，用于设置窗口等场景。
+pub fn toggle_small(cx: &App, enabled: bool) -> impl IntoElement {
+    let weixin_green = Theme::weixin_colors(cx).weixin_green;
+    let toggle_off: Hsla = rgb(0xcccccc).into();
+
+    div()
+        .w(px(30.))
+        .h(px(16.))
+        .rounded(px(8.))
+        .cursor_pointer()
+        .bg(if enabled { weixin_green } else { toggle_off })
+        .flex()
+        .items_center()
+        .px(px(2.))
+        .child(
+            div()
+                .w(px(12.))
+                .h(px(12.))
+                .rounded(px(6.))
+                .bg(gpui::white())
+                .when(enabled, |this| this.ml_auto()),
+        )
+}

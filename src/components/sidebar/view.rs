@@ -136,6 +136,7 @@ impl ToolBar {
                         ),
                 )
                 .content(move |_, _window, cx| {
+                    let theme = cx.theme();
 
                     let phone_hover = toolbar.read(cx).phone_hover;
                     let video_hovered = matches!(phone_hover, PhonePopoverHover::Video);
@@ -176,6 +177,7 @@ impl ToolBar {
                     v_flex()
                         .gap_1()
                         .p_2()
+                        .bg(theme.popover)
                         .child(
                             crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
                                 "phone-video-call",

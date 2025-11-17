@@ -24,6 +24,7 @@ pub fn divider(cx: &App) -> impl IntoElement {
         .bg(border_color)
 }
 
+#[allow(dead_code)]
 pub fn section_title(cx: &App, title: &'static str) -> impl IntoElement {
     let foreground = cx.theme().foreground;
 
