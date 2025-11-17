@@ -1,15 +1,17 @@
 use gpui::{
-    div, px, AnyElement, App, AppContext, Axis, Context, Entity, EventEmitter, InteractiveElement,
-    IntoElement, ParentElement, Pixels, Render, StatefulInteractiveElement, Styled, Window,
-    WindowControlArea,
+    div, px, size, AnyElement, App, AppContext, AvailableSpace, Axis, Context, Entity,
+    EventEmitter, InteractiveElement, IntoElement, ParentElement, Pixels, Render,
+    StatefulInteractiveElement, Styled, Window, WindowControlArea,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
     h_flex,
     highlighter::Language,
     input::{InputState, TabSize, TextInput},
-    v_flex, ActiveTheme, Icon, StyledExt as _,
+    scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
+    v_flex, v_virtual_list, ActiveTheme, Icon, StyledExt as _, VirtualListScrollHandle,
 };
+use std::rc::Rc;
 
 use crate::models::{ChatSession, Message};
 use crate::ui::theme::Theme;
@@ -18,12 +20,17 @@ pub struct ChatArea {
     current_session: Option<ChatSession>,
     input_state: Entity<InputState>,
     on_send_message: Option<Box<dyn Fn(String) + 'static>>,
+    /// 当前输入区域高度（下方输入框整体区域）。
     current_input_height: Pixels,
+    /// 输入区域最小/最大高度，用于约束拖动。
     min_input_height: Pixels,
     max_input_height: Pixels,
     is_resizing: bool,
     drag_start_y: Pixels,
     drag_start_height: Pixels,
+    /// 聊天消息虚拟列表的滚动句柄和滚动条状态。
+    scroll_handle: VirtualListScrollHandle,
+    scroll_state: ScrollbarState,
 }
 
 /// ChatArea 对外发送的事件（例如输入框高度调整完成）。
@@ -36,7 +43,7 @@ impl EventEmitter<ChatAreaEvent> for ChatArea {}
 
 impl ChatArea {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let default_height = crate::ui::constants::chat_input_default_height();
+        let default_input_height = crate::ui::constants::chat_input_default_height();
 
         let input_state = cx.new(|cx| {
             InputState::new(window, cx)
@@ -52,12 +59,14 @@ impl ChatArea {
             current_session: None,
             input_state,
             on_send_message: None,
-            current_input_height: default_height,
+            current_input_height: default_input_height,
             min_input_height: crate::ui::constants::chat_input_min_height(),
             max_input_height: crate::ui::constants::chat_input_max_height(),
             is_resizing: false,
             drag_start_y: px(0.),
-            drag_start_height: default_height,
+            drag_start_height: default_input_height,
+            scroll_handle: VirtualListScrollHandle::new(),
+            scroll_state: ScrollbarState::default(),
         }
     }
 
@@ -149,6 +158,8 @@ impl ChatArea {
             return;
         }
         let dy = current_y - self.drag_start_y;
+        // 拖动时调整下方输入区域高度，消息区域使用剩余空间。
+        // 注意：Y 轴向下为正，所以这里需要反向计算，才能做到鼠标往上拖动时输入区域变大。
         let mut new_h = self.drag_start_height - dy;
         if new_h < self.min_input_height {
             new_h = self.min_input_height;
@@ -163,16 +174,16 @@ impl ChatArea {
 
     fn end_resize(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.is_resizing = false;
-        // 告知上层输入框高度已经调整完成，可用于持久化。
+        // 告知上层聊天区域高度已经调整完成，可用于持久化。
         cx.emit(ChatAreaEvent::InputResized);
     }
 
-    /// 当前输入框高度，供上层持久化使用。
+    /// 当前输入区域高度，供上层持久化使用。
     pub fn input_height(&self) -> Pixels {
         self.current_input_height
     }
 
-    /// 从持久化状态恢复输入框高度（会自动按最小/最大高度裁剪）。
+    /// 从持久化状态恢复输入区域高度（会自动按最小/最大高度裁剪）。
     pub fn set_input_height(&mut self, height: Pixels, cx: &mut Context<Self>) {
         let mut h = height;
         if h < self.min_input_height {
@@ -188,8 +199,8 @@ impl ChatArea {
 }
 
 impl Render for ChatArea {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme().clone();
         let weixin_colors = Theme::weixin_colors(cx);
         let no_session_text_color = theme.muted_foreground;
         let border_color = theme.border;
@@ -215,16 +226,64 @@ impl Render for ChatArea {
             );
         }
 
-        // 选中会话时：上面是消息列表（可滚动），下面是拖动条 + 输入框。
+        // 选中会话时：上面是消息列表（虚拟列表），下面是拖动条 + 输入框。
         let messages_view = {
             let session = self.current_session.as_ref().unwrap();
             let is_group = session.contact.is_group;
-            crate::ui::widgets::message_list::message_list(
-                &session.messages,
-                is_group,
-                theme,
-                &weixin_colors,
+
+            // 仿照 `list.rs` 的做法，提前测量每个消息气泡的真实高度，
+            // 然后把测量结果作为 `item_sizes` 交给 VirtualList。
+            let available_space = size(
+                // 宽度按气泡最大宽度来测量，这样可以正确计算换行后的高度。
+                AvailableSpace::Definite(crate::ui::constants::bubble_max_width()),
+                AvailableSpace::MinContent,
+            );
+
+            let item_sizes: Rc<Vec<gpui::Size<Pixels>>> = Rc::new(
+                session
+                    .messages
+                    .iter()
+                    .map(|msg| {
+                        let bubble = crate::ui::widgets::message_bubble::message_bubble(
+                            msg,
+                            is_group,
+                            &theme,
+                            &weixin_colors,
+                        );
+                        let mut el = div().w_full().child(bubble).into_any_element();
+                        el.layout_as_root(available_space, window, cx)
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            let item_sizes_for_render = item_sizes.clone();
+
+            v_virtual_list(
+                cx.entity().clone(),
+                "chat-messages",
+                item_sizes,
+                move |view, visible_range, _window, cx| {
+                    let Some(session) = &view.current_session else {
+                        return Vec::new();
+                    };
+                    let is_group = session.contact.is_group;
+                    let _item_sizes = item_sizes_for_render.clone();
+
+                    visible_range
+                        .map(|ix| {
+                            // 这里直接复用原来的气泡布局，不再手动设置高度，
+                            // 高度由 VirtualList 根据预先测量的 item_sizes 控制。
+                            crate::ui::widgets::message_bubble::message_bubble(
+                                &session.messages[ix],
+                                is_group,
+                                cx.theme(),
+                                &Theme::weixin_colors(cx),
+                            )
+                        })
+                        .collect()
+                },
             )
+            .pb_10()
+            .track_scroll(&self.scroll_handle)
             .into_any_element()
         };
 
@@ -246,14 +305,31 @@ impl Render for ChatArea {
             )
             .child(
                 div()
-                    .id("chat-messages")
                     .flex_1()
                     .w_full()
                     .bg(bg_color)
-                    .overflow_y_scroll()
                     .border_t_1()
                     .border_color(border_color)
-                    .child(messages_view),
+                    .child(
+                        div()
+                            .relative()
+                            .size_full()
+                            .w_full()
+                            .bg(bg_color)
+                            .child(messages_view)
+                            .child(
+                                div()
+                                    .absolute()
+                                    .top_0()
+                                    .left_0()
+                                    .right_0()
+                                    .bottom_0()
+                                    .child(
+                                        Scrollbar::both(&self.scroll_state, &self.scroll_handle)
+                                            .axis(ScrollbarAxis::Vertical),
+                                    ),
+                            ),
+                    ),
             )
             .child(
                 div()

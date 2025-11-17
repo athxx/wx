@@ -1,15 +1,11 @@
 use crate::app::state::WeixinApp;
+use crate::ui::fixed_resizable::fixed_h_resizable;
 use crate::ui::theme::Theme;
-use crate::ui::fixed_resizable::{fixed_h_resizable};
 use gpui::{
     div, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     WindowControlArea,
 };
-use gpui_component::{
-    avatar::Avatar,
-    h_flex,
-    v_flex, ActiveTheme,
-};
+use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme};
 
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -34,21 +30,13 @@ impl WeixinApp {
             .items_center()
             .child(self.render_user_avatar(cx))
             .child(
-                fixed_h_resizable(
-                    "title-search-resizable",
-                    self.session_split_state.clone(),
-                )
-                .width_range(
-                    crate::ui::constants::session_list_min_width()
-                        ..crate::ui::constants::session_list_max_width(),
-                )
-                .left(self.render_search_area(cx))
-                .right(self.render_chat_header(
-                    &current_chat_title,
-                    has_session,
-                    window,
-                    cx,
-                )),
+                fixed_h_resizable("title-search-resizable", self.session_split_state.clone())
+                    .width_range(
+                        crate::ui::constants::session_list_min_width()
+                            ..crate::ui::constants::session_list_max_width(),
+                    )
+                    .left(self.render_search_area(cx))
+                    .right(self.render_chat_header(&current_chat_title, has_session, window, cx)),
             )
     }
 
@@ -120,6 +108,7 @@ impl WeixinApp {
                 .child(crate::ui::widgets::window_controls::window_controls(
                     is_maximized,
                     theme,
+                    true, // 主窗口保留右上角的 Pin 按钮
                 ))
                 .child(crate::ui::widgets::chat_header_actions::chat_header_actions(theme))
                 .into_any_element()
@@ -131,6 +120,7 @@ impl WeixinApp {
                 .child(crate::ui::widgets::window_controls::window_controls(
                     is_maximized,
                     theme,
+                    true,
                 ))
                 .into_any_element()
         };
@@ -151,16 +141,13 @@ impl WeixinApp {
             .overflow_hidden()
             .child(self.toolbar.clone())
             .child(
-                fixed_h_resizable(
-                    "session-list-resizable",
-                    self.session_split_state.clone(),
-                )
-                .width_range(
-                    crate::ui::constants::session_list_min_width()
-                        ..crate::ui::constants::session_list_max_width(),
-                )
-                .left(self.session_list.clone())
-                .right(self.chat_area.clone()),
+                fixed_h_resizable("session-list-resizable", self.session_split_state.clone())
+                    .width_range(
+                        crate::ui::constants::session_list_min_width()
+                            ..crate::ui::constants::session_list_max_width(),
+                    )
+                    .left(self.session_list.clone())
+                    .right(self.chat_area.clone()),
             )
     }
 }

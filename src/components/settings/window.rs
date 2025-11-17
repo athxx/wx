@@ -1,11 +1,13 @@
 use crate::ui::theme::{Theme, ThemeMode};
 use crate::ui::widgets::setting_card;
+use crate::app::state::Preferences;
 use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
     button::Button,
     h_flex,
     popover::{Popover, PopoverContent},
-    v_flex, ActiveTheme, ContextModal, Icon, Sizable,
+    slider::{Slider, SliderEvent, SliderState},
+    v_flex, ActiveTheme, ContextModal, Icon, Selectable, Sizable,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -33,6 +35,12 @@ pub struct SettingsWindow {
     active_tab_ix: usize,
     current_language: String,
     current_font_size: FontSize,
+    /// Slider state for controlling global font size.
+    font_slider: Entity<SliderState>,
+    /// Subscription to listen slider changes and update global font size.
+    font_slider_subscription: gpui::Subscription,
+    /// Current font size value used by the slider (in px).
+    current_font_size_value: f32,
     _theme_observer: Option<gpui::Subscription>,
 }
 
@@ -44,10 +52,59 @@ impl SettingsWindow {
             cx.notify();
         });
 
+        // 字体大小 Slider：0..7 共 8 档，根据当前全局字体大小计算初始档位
+        let current_font_size: f32 = cx.theme().font_size.into();
+        let initial_index = match current_font_size.round() as i32 {
+            14 => 0.0, // 小
+            16 => 1.0, // 标准
+            17 => 2.0,
+            18 => 3.0,
+            19 => 4.0,
+            20 => 5.0,
+            21 => 6.0,
+            22 => 7.0, // 大
+            _ => 1.0,
+        };
+        let initial_font_size = current_font_size;
+
+        let font_slider = cx.new(|_| {
+            SliderState::new()
+                .min(0.0)
+                .max(7.0)
+                .step(1.0)
+                .default_value(initial_index)
+        });
+
+        // Slider 变化时，映射到具体像素并更新全局字体大小
+        let font_slider_subscription = cx.subscribe(&font_slider, |this, _, event: &SliderEvent, cx| {
+            if let SliderEvent::Change(value) = event {
+                let idx = value.start().round().clamp(0.0, 7.0) as i32;
+                let size = match idx {
+                    0 => 14.0, // 小
+                    1 => 16.0, // 标准
+                    2 => 17.0,
+                    3 => 18.0,
+                    4 => 19.0,
+                    5 => 20.0,
+                    6 => 21.0,
+                    7 => 22.0, // 大
+                    _ => 16.0,
+                };
+                this.current_font_size_value = size;
+                gpui_component::Theme::global_mut(cx).font_size = px(size);
+                // 保存到偏好 JSON
+                Preferences::save_from_app(cx);
+                cx.refresh_windows();
+            }
+        });
+
         Self {
             active_tab_ix: 1,
             current_language: "简体中文".to_string(),
             current_font_size: FontSize::Standard,
+            font_slider,
+            font_slider_subscription,
+            current_font_size_value: initial_font_size,
             _theme_observer: Some(theme_observer),
         }
     }
@@ -207,21 +264,24 @@ impl SettingsWindow {
 
         let appearance_card_content = {
             let theme_row = self.render_theme_setting(theme_mode, window, cx);
-            let divider = setting_card::divider(cx);
             let font_row = {
                 let label = div().text_sm().text_color(foreground).child("字体大小");
-                let btn = self.render_font_size_button(window, cx);
+                let slider = self.render_font_size_slider(window, cx);
                 h_flex()
                     .items_center()
-                    .justify_between()
                     .py_2()
                     .child(label)
-                    .child(btn)
+                    .child(
+                        h_flex()
+                            .flex_1()
+                            .justify_end()
+                            .child(slider),
+                    )
             };
             v_flex()
-                .gap_4()
+                .gap_0()
                 .child(theme_row)
-                .child(divider)
+                .child(setting_card::divider(cx))
                 .child(font_row)
         };
 
@@ -371,39 +431,54 @@ impl SettingsWindow {
             .child(self.render_theme_button(current_mode, window, cx))
     }
 
+    /// 通用设置中的下拉按钮触发器（语言 / 主题 / 字体），统一使用同一风格。
+    fn general_select_trigger_button(
+        id: &'static str,
+        label: String,
+        cx: &mut Context<Self>,
+    ) -> Button {
+        let weixin_colors = Theme::weixin_colors(cx);
+
+        Button::new(id)
+            .selected(false)
+            .xsmall()
+            .outline()
+            .h(px(26.))
+            .w(px(90.))
+            .child(
+                h_flex()
+                    .items_center()
+                    .gap_2()
+                    .text_size(px(11.))
+                    .child(label)
+                    .child(
+                        div()
+                            .p(crate::ui::constants::icon_badge_padding_xs())
+                            .rounded_sm()
+                            .bg(weixin_colors.weixin_green)
+                            .child(
+                                Icon::default()
+                                    .path("arrow.svg")
+                                    .text_color(gpui::rgb(0xffffff)),
+                            ),
+                    ),
+            )
+    }
+
     fn render_theme_button(
         &self,
         current_mode: ThemeMode,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let weixin_colors = Theme::weixin_colors(cx);
+        let label = match current_mode {
+            ThemeMode::Light => "浅色模式".to_string(),
+            ThemeMode::Dark => "深色模式".to_string(),
+        };
 
         Popover::new("theme-popover")
             .anchor(gpui::Corner::BottomLeft)
-            .trigger(
-                Button::new("theme-btn").xsmall().outline().child(
-                    h_flex()
-                        .items_center()
-                        .gap_2()
-                        .text_xs()
-                        .child(match current_mode {
-                            ThemeMode::Light => "浅色",
-                            ThemeMode::Dark => "深色",
-                        })
-                        .child(
-                            div()
-                                .p(crate::ui::constants::icon_badge_padding_xs())
-                                .rounded_sm()
-                                .bg(weixin_colors.weixin_green)
-                                .child(
-                                    Icon::default()
-                                        .path("arrow.svg")
-                                        .text_color(gpui::rgb(0xffffff)),
-                                ),
-                        ),
-                ),
-            )
+            .trigger(Self::general_select_trigger_button("theme-btn", label, cx))
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
                 let light_hovered = cx.new(|_| false);
@@ -423,13 +498,15 @@ impl SettingsWindow {
                                 let state = light_hovered.clone();
                                 Self::render_static_theme_item(
                                     "theme-light",
-                                    "浅色",
+                                    "浅色模式",
                                     hovered,
                                     move |is_hovering, cx| {
                                         state.update(cx, |s, _| *s = is_hovering);
                                     },
                                     cx.listener(|_, _, window, cx| {
                                         Theme::set_light(cx);
+                                        // 保存主题偏好
+                                        Preferences::save_from_app(cx);
                                         cx.refresh_windows();
                                         window.push_notification("切换到浅色主题", cx);
                                         cx.emit(DismissEvent);
@@ -441,13 +518,15 @@ impl SettingsWindow {
                                 let state = dark_hovered.clone();
                                 Self::render_static_theme_item(
                                     "theme-dark",
-                                    "深色",
+                                    "深色模式",
                                     hovered,
                                     move |is_hovering, cx| {
                                         state.update(cx, |s, _| *s = is_hovering);
                                     },
                                     cx.listener(|_, _, window, cx| {
                                         Theme::set_dark(cx);
+                                        // 保存主题偏好
+                                        Preferences::save_from_app(cx);
                                         cx.refresh_windows();
                                         window.push_notification("切换到深色主题", cx);
                                         cx.emit(DismissEvent);
@@ -576,30 +655,14 @@ impl SettingsWindow {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let current_language = self.current_language.clone();
-        let weixin_colors = Theme::weixin_colors(cx);
 
         Popover::new("language-popover")
             .anchor(gpui::Corner::BottomRight)
-            .trigger(
-                Button::new("language-btn").xsmall().outline().child(
-                    h_flex()
-                        .items_center()
-                        .gap_2()
-                        .text_xs()
-                        .child(current_language.clone())
-                        .child(
-                            div()
-                                .p(crate::ui::constants::icon_badge_padding_xs())
-                                .rounded_sm()
-                                .bg(weixin_colors.weixin_green)
-                                .child(
-                                    Icon::default()
-                                        .path("arrow.svg")
-                                        .text_color(gpui::rgb(0xffffff)),
-                                ),
-                        ),
-                ),
-            )
+            .trigger(Self::general_select_trigger_button(
+                "language-btn",
+                current_language.clone(),
+                cx,
+            ))
             .content(move |window, cx| {
                 let theme_popover = cx.theme().popover;
                 let chinese_hovered = cx.new(|_| false);
@@ -673,112 +736,37 @@ impl SettingsWindow {
             })
     }
 
-    fn render_font_size_button(
+    fn render_font_size_slider(
         &self,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let current_size = self.current_font_size;
-        let current_size_str = match current_size {
-            FontSize::Small => "小",
-            FontSize::Standard => "标准",
-            FontSize::Large => "大",
-        };
+        let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
 
-        Popover::new("font-size-popover")
-            .anchor(gpui::Corner::BottomRight)
-            .trigger(
-                Button::new("font-size-btn").xsmall().outline().child(
-                    h_flex()
-                        .items_center()
-                        .gap_2()
-                        .text_xs()
-                        .child(current_size_str)
-                        .child(
-                            div()
-                                .p(crate::ui::constants::icon_badge_padding_xs())
-                                .rounded_sm()
-                                .bg(weixin_colors.weixin_green)
-                                .child(
-                                    Icon::default()
-                                        .path("arrow.svg")
-                                        .text_color(gpui::rgb(0xffffff)),
-                                ),
-                        ),
-                ),
+        v_flex()
+            .gap_1()
+            .w(px(160.))
+            .child(
+                Slider::new(&self.font_slider)
+                    .bg(weixin_colors.weixin_green)
+                    .text_color(theme.slider_thumb)
+                    .rounded(crate::ui::constants::radius_sm()),
             )
-            .content(move |window, cx| {
-                let theme_popover = cx.theme().popover;
-                let small_hovered = cx.new(|_| false);
-                let standard_hovered = cx.new(|_| false);
-                let large_hovered = cx.new(|_| false);
-
-                cx.new(|cx| {
-                    PopoverContent::new(window, cx, move |_, cx| {
-                        let theme = cx.theme();
-
-                        v_flex()
-                            .w(crate::ui::constants::popover_width_sm())
-                            .gap_0()
-                            .py_2()
-                            .text_color(theme.foreground)
-                            .child({
-                                let hovered = *small_hovered.read(cx);
-                                let state = small_hovered.clone();
-                                Self::render_static_font_item(
-                                    "font-small",
-                                    "小",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        window.push_notification("字体大小设置功能开发中...", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .child({
-                                let hovered = *standard_hovered.read(cx);
-                                let state = standard_hovered.clone();
-                                Self::render_static_font_item(
-                                    "font-standard",
-                                    "标准",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        window.push_notification("字体大小设置功能开发中...", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .child({
-                                let hovered = *large_hovered.read(cx);
-                                let state = large_hovered.clone();
-                                Self::render_static_font_item(
-                                    "font-large",
-                                    "大",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        window.push_notification("字体大小设置功能开发中...", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .into_any()
-                    })
-                    .p_1()
-                    .bg(theme_popover)
-                    .rounded(crate::ui::constants::radius_md())
-                    .shadow_md()
-                })
-            })
+            .child(
+                h_flex()
+                    .justify_between()
+                    .text_xs()
+                    .text_color(theme.muted_foreground)
+                    .child("小")      // 第 1 节：小
+                    .child("标准")    // 第 2 节：标准
+                    .child("")       // 第 3 节
+                    .child("")       // 第 4 节
+                    .child("")       // 第 5 节
+                    .child("")       // 第 6 节
+                    .child("")       // 第 7 节
+                    .child("大"),     // 第 8 节：大
+            )
     }
 
     fn render_tab_item(
@@ -828,7 +816,10 @@ impl Drop for SettingsWindow {
 }
 
 impl Render for SettingsWindow {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // 固定设置窗口的 rem 基础字号，使其不随全局字体缩放变化
+        window.set_rem_size(px(16.0));
+
         let weixin_colors = Theme::weixin_colors(cx);
         let theme = cx.theme();
         let close_hover = rgb(0xe81123);
@@ -911,7 +902,7 @@ impl Render for SettingsWindow {
                             .w_full()
                             .p_6()
                             .overflow_hidden()
-                            .child(self.render_content(_window, cx)),
+.child(self.render_content(window, cx)),
                     ),
             )
     }

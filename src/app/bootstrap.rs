@@ -1,18 +1,26 @@
-use gpui::{App, AppContext, Bounds, Size, WindowBounds, WindowKind, WindowOptions};
+use gpui::{px, App, AppContext, Bounds, Size, WindowBounds, WindowKind, WindowOptions};
 use gpui_component::{Root, TitleBar};
 
-use crate::app::actions::{SelectSession, ToolbarClicked};
-use crate::app::state::WeixinApp;
-use crate::components::SettingsWindow;
+use crate::app::actions::{OpenChatWindow, SelectSession, ToolbarClicked};
+use crate::app::state::{Preferences, WeixinApp};
+use crate::ui::theme::{Theme, ThemeMode};
+use crate::components::{ChatWindow, SettingsWindow};
 
 /// 应用级初始化：注册组件库、主题等。
 pub fn init_app(cx: &mut App) {
     // 初始化 gpui-component（类似 story::init）
     gpui_component::init(cx);
 
-    // 应用微信主题的光标颜色
-    let colors = crate::ui::theme::WeixinThemeColors::light();
-    gpui_component::Theme::global_mut(cx).caret = colors.caret;
+    // 从偏好中恢复主题模式和字体大小
+    let prefs = Preferences::load();
+
+    match prefs.theme_mode {
+        ThemeMode::Light => Theme::set_light(cx),
+        ThemeMode::Dark => Theme::set_dark(cx),
+    }
+
+    // 应用字体大小
+    gpui_component::Theme::global_mut(cx).font_size = px(prefs.font_size);
 
     cx.activate(true);
 }
@@ -60,6 +68,12 @@ pub fn open_main_window(cx: &mut App) {
             });
         }
 
+        // 双击会话时打开独立聊天窗口。
+        cx.on_action(|action: &OpenChatWindow, cx_app: &mut App| {
+            // 这里不依赖 WeixinApp 的内部状态，只根据 contact_id 打开一个新的聊天窗口。
+            open_chat_window(action.contact_id.clone(), cx_app);
+        });
+
         cx.new(|cx| Root::new(app_view.into(), window, cx))
     })
     .expect("failed to open main window");
@@ -98,6 +112,38 @@ pub fn open_settings_window(cx: &mut App) {
     cx.open_window(options, |window, cx| {
         let settings_view = SettingsWindow::view(window, cx);
         cx.new(|cx| Root::new(settings_view.into(), window, cx))
+    })
+    .ok();
+}
+
+/// 打开独立聊天窗口，内容与主窗口右侧聊天区域类似。
+pub fn open_chat_window(contact_id: String, cx: &mut App) {
+    let window_size = Size {
+        width: crate::ui::constants::chat_window_width(),
+        height: crate::ui::constants::app_window_height(),
+    };
+
+    let window_bounds = Bounds::centered(None, window_size, cx);
+
+    let options = WindowOptions {
+        window_bounds: Some(WindowBounds::Windowed(window_bounds)),
+        titlebar: Some(TitleBar::title_bar_options()),
+        window_min_size: Some(Size {
+            width: crate::ui::constants::chat_window_width(),
+            height: crate::ui::constants::app_window_min_height(),
+        }),
+        kind: WindowKind::Normal,
+        ..Default::default()
+    };
+
+    // 如果该会话窗口已经存在，则不再打开新的窗口。
+    if !ChatWindow::try_reserve(&contact_id) {
+        return;
+    }
+
+    cx.open_window(options, move |window, cx| {
+        let chat_view = ChatWindow::view(window, cx, contact_id.clone());
+        cx.new(|cx| Root::new(chat_view.into(), window, cx))
     })
     .ok();
 }

@@ -1,12 +1,12 @@
 use gpui::{
-    div, App, AppContext, Axis, Context, Entity, InteractiveElement, IntoElement, ParentElement,
-    Render, StatefulInteractiveElement, Styled, Window,
+    div, App, AppContext, Axis, ClickEvent, Context, Entity, InteractiveElement, IntoElement,
+    ParentElement, Render, StatefulInteractiveElement, Styled, Window,
 };
 use gpui_component::{input::InputState, v_flex, ActiveTheme, StyledExt as _};
 
 use crate::models::Contact;
 use crate::ui::theme::Theme;
-use crate::app::actions::SelectSession;
+use crate::app::actions::{OpenChatWindow, SelectSession};
 
 pub struct SessionList {
     contacts: Vec<Contact>,
@@ -86,7 +86,7 @@ impl SessionList {
                 }
             })
             .cursor_pointer()
-            .on_click(cx.listener(move |this, _, window, cx| {
+            .on_click(cx.listener(move |this, ev: &ClickEvent, window, cx| {
                 // 再次点击已选中的会话 -> 取消选中；否则选中该会话
                 let toggling_off = this
                     .selected_id
@@ -100,12 +100,24 @@ impl SessionList {
                     this.selected_id = Some(contact_id.clone());
                 }
 
+                // 单击：仍然选中会话
                 window.dispatch_action(
                     Box::new(SelectSession {
                         contact_id: contact_id.clone(),
                     }),
                     cx,
                 );
+
+                // 双击：在保持选中状态的同时，打开独立聊天窗口
+                if ev.click_count() == 2 {
+                    window.dispatch_action(
+                        Box::new(OpenChatWindow {
+                            contact_id: contact_id.clone(),
+                        }),
+                        cx,
+                    );
+                }
+
                 cx.notify();
             }))
             .child(crate::ui::widgets::session_row::session_row_content(

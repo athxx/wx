@@ -3,16 +3,23 @@ use gpui::{
 };
 use gpui_component::{h_flex, Icon, Sizable};
 
-pub fn window_controls(is_maximized: bool, theme: &gpui_component::Theme) -> impl IntoElement {
-    h_flex()
-        .h_8()
-        .items_center()
-        .child(window_button(
+pub fn window_controls(
+    is_maximized: bool,
+    theme: &gpui_component::Theme,
+    show_pin: bool,
+) -> impl IntoElement {
+    let mut header = h_flex().h_8().items_center();
+
+    if show_pin {
+        header = header.child(window_button(
             "win-btn-pin",
             "nail.svg",
             WindowControlArea::Min,
             theme,
-        ))
+        ));
+    }
+
+    header
         .child(window_button(
             "win-btn-min",
             "window-minimize.svg",

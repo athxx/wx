@@ -1,4 +1,5 @@
 use gpui::{px, Pixels};
+use gpui_component::PixelsExt;
 
 pub fn toolbar_width() -> Pixels {
     px(67.)
@@ -96,7 +97,7 @@ pub fn header_narrow_button_height() -> Pixels {
 }
 
 pub fn bubble_max_width() -> Pixels {
-    px(480.)
+    px(300.)
 }
 pub fn bubble_radius() -> Pixels {
     px(4.)
@@ -177,6 +178,15 @@ pub fn app_window_min_width() -> Pixels {
 }
 pub fn app_window_min_height() -> Pixels {
     px(600.)
+}
+
+/// 独立聊天窗口宽度（约等于主窗口聊天区域宽度）。
+pub fn chat_window_width() -> Pixels {
+    // 主窗口宽度减去左侧工具栏和会话列表的最小宽度。
+    let total = app_window_width().as_f32();
+    let left_toolbar = toolbar_width().as_f32();
+    let session_min = session_list_min_width().as_f32();
+    px(total - left_toolbar - session_min)
 }
 
 pub fn toolbar_button_padding_y() -> Pixels {

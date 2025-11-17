@@ -1,25 +1,108 @@
 use crate::components::{ChatArea, ChatAreaEvent, SessionList, ToolBar};
 use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
-use crate::ui::theme::Theme;
+use crate::ui::theme::{Theme, ThemeMode};
 use gpui::{px, App, AppContext, Context, Entity, Window};
 use crate::ui::fixed_resizable::{FixedResizableEvent, FixedResizableState};
 use crate::app::actions::{SelectSession, ToolbarClicked};
+use gpui_component::ActiveTheme;
 use serde::{Deserialize, Serialize};
 
-/// 持久化的布局状态，目前记录左侧会话区域宽度和聊天输入框高度。
+/// 持久化的状态：布局 + 主题模式 + 字体大小，全部写在同一个 JSON 里。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct LayoutState {
+    /// 左侧会话区域宽度。
     session_left_width: f32,
-    /// 聊天输入框高度（Pixels -> f32），为兼容旧版本，使用可选字段。
+    /// 聊天消息区域高度（旧字段，兼容使用，不再实际生效）。
+    #[serde(default)]
+    chat_messages_height: Option<f32>,
+    /// 聊天输入区域高度（Pixels -> f32）。
     #[serde(default)]
     chat_input_height: Option<f32>,
+    /// 当前主题模式（浅色 / 深色）。
+    #[serde(default)]
+    theme_mode: Option<ThemeMode>,
+    /// 基础字体大小，单位 px。
+    #[serde(default)]
+    font_size: Option<f32>,
 }
 
 #[cfg(debug_assertions)]
-const LAYOUT_FILE: &str = "target/weixin_layout.json";
+const CONFIG_FILE: &str = "target/weixin_config.json";
 #[cfg(not(debug_assertions))]
-const LAYOUT_FILE: &str = "weixin_layout.json";
+const CONFIG_FILE: &str = "weixin_config.json";
+
+/// 主题与字体大小用户偏好视图结构（方便在设置窗口中使用）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Preferences {
+    /// 当前主题模式（浅色 / 深色）。
+    pub theme_mode: ThemeMode,
+    /// 基础字体大小，单位 px。
+    pub font_size: f32,
+}
+
+impl Default for Preferences {
+    fn default() -> Self {
+        Self {
+            theme_mode: ThemeMode::Light,
+            font_size: 16.0,
+        }
+    }
+}
+
+impl Preferences {
+    /// 从磁盘加载用户偏好，如果失败则返回默认值。
+    pub fn load() -> Self {
+        if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
+            if let Ok(state) = serde_json::from_str::<LayoutState>(&json) {
+                return Preferences {
+                    theme_mode: state.theme_mode.unwrap_or(ThemeMode::Light),
+                    font_size: state.font_size.unwrap_or(16.0),
+                };
+            }
+        }
+        Preferences::default()
+    }
+
+    /// 将当前偏好写入磁盘（与布局一起保存在同一个 JSON）。
+    pub fn save(&self) {
+        // 先尝试读取已有布局状态，如果不存在则创建默认值。
+        let mut state = if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
+            serde_json::from_str::<LayoutState>(&json).unwrap_or(LayoutState {
+                session_left_width: 200.0,
+                chat_messages_height: None,
+                chat_input_height: None,
+                theme_mode: Some(self.theme_mode),
+                font_size: Some(self.font_size),
+            })
+        } else {
+            LayoutState {
+                session_left_width: 200.0,
+                chat_messages_height: None,
+                chat_input_height: None,
+                theme_mode: Some(self.theme_mode),
+                font_size: Some(self.font_size),
+            }
+        };
+
+        state.theme_mode = Some(self.theme_mode);
+        state.font_size = Some(self.font_size);
+
+        if let Ok(json) = serde_json::to_string_pretty(&state) {
+            let _ = std::fs::write(CONFIG_FILE, json);
+        }
+    }
+
+    /// 从当前 App 全局 Theme 生成偏好并写入磁盘。
+    pub fn save_from_app(cx: &mut App) {
+        let mut prefs = Preferences::load();
+        let theme = cx.theme();
+        prefs.theme_mode = theme.mode;
+        let font_size: f32 = theme.font_size.into();
+        prefs.font_size = font_size;
+        prefs.save();
+    }
+}
 
 /// 纯领域层的聊天状态，不依赖 UI 组件。
 struct ChatState {
@@ -161,14 +244,15 @@ impl WeixinApp {
         chat_area: &Entity<ChatArea>,
         cx: &mut Context<Self>,
     ) {
-        if let Ok(json) = std::fs::read_to_string(LAYOUT_FILE) {
+        if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
             if let Ok(state) = serde_json::from_str::<LayoutState>(&json) {
                 session_split_state.update(cx, |s, _| {
                     s.left_width = px(state.session_left_width);
                     s.drag_start_width = s.left_width;
                 });
 
-                if let Some(h) = state.chat_input_height {
+                // 优先使用新的输入区域高度；如果不存在，则兼容旧的 chat_messages_height 字段。
+                if let Some(h) = state.chat_input_height.or(state.chat_messages_height) {
                     let height = px(h);
                     chat_area.update(cx, |area, cx_chat| {
                         area.set_input_height(height, cx_chat);
@@ -183,19 +267,36 @@ impl WeixinApp {
         // 将 Pixels 转为标量宽度，依赖于 gpui 对 Pixels 的 Into<f32> 实现。
         let width: f32 = left_width.into();
 
-        // 当前输入框高度也一并持久化。
+        // 当前输入区域高度一并持久化。
         let chat_input_height: f32 = {
             let h = self.chat_area.read(cx).input_height();
             h.into()
         };
 
-        let layout = LayoutState {
-            session_left_width: width,
-            chat_input_height: Some(chat_input_height),
+        // 读取已有的状态以保留主题设置，如果不存在则创建默认值。
+        let mut state = if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
+            serde_json::from_str::<LayoutState>(&json).unwrap_or(LayoutState {
+                session_left_width: width,
+                chat_messages_height: None,
+                chat_input_height: Some(chat_input_height),
+                theme_mode: None,
+                font_size: None,
+            })
+        } else {
+            LayoutState {
+                session_left_width: width,
+                chat_messages_height: None,
+                chat_input_height: Some(chat_input_height),
+                theme_mode: None,
+                font_size: None,
+            }
         };
 
-        if let Ok(json) = serde_json::to_string_pretty(&layout) {
-            let _ = std::fs::write(LAYOUT_FILE, json);
+        state.session_left_width = width;
+        state.chat_input_height = Some(chat_input_height);
+
+        if let Ok(json) = serde_json::to_string_pretty(&state) {
+            let _ = std::fs::write(CONFIG_FILE, json);
         }
     }
 

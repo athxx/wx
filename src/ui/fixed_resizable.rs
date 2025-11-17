@@ -1,22 +1,9 @@
+use gpui::InteractiveElement as _;
 use gpui::{
-    px,
-    App,
-    AppContext as _,
-    ElementId,
-    Entity,
-    EventEmitter,
-    IntoElement,
-    MouseButton,
-    MouseDownEvent,
-    MouseMoveEvent,
-    MouseUpEvent,
-    ParentElement as _,
-    Pixels,
-    RenderOnce,
-    Styled,
+    px, App, AppContext as _, ElementId, Entity, EventEmitter, IntoElement, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParentElement as _, Pixels, RenderOnce, Styled,
     Window,
 };
-use gpui::InteractiveElement as _;
 use gpui_component::ActiveTheme as _;
 use std::ops::Range;
 
@@ -153,11 +140,7 @@ impl RenderOnce for FixedResizableGroup {
                         },
                     )
                     // 拖动区域本身透明，只提供命中范围；真正的 1px 竖线由左侧容器的 border_r_1 提供
-                    .child(
-                        gpui::div()
-                            .w(HANDLE_WIDTH)
-                            .h_full(),
-                    )
+                    .child(gpui::div().w(HANDLE_WIDTH).h_full())
             })
             // 右侧自适应区域：使用 flex 列布局并占满可用空间，
             // 让 ChatArea 内部的 v_flex().flex_1() 能按预期分配高度。

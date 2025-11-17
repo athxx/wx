@@ -9,6 +9,13 @@ pub struct SelectSession {
     pub contact_id: String,
 }
 
+/// 双击会话时打开独立聊天窗口的全局动作。
+#[derive(Action, Clone, PartialEq, Eq)]
+#[action(namespace = weixin, no_json)]
+pub struct OpenChatWindow {
+    pub contact_id: String,
+}
+
 /// 工具栏点击的全局动作，由工具栏触发，由 `WeixinApp` 统一处理。
 #[derive(Action, Clone, Copy, PartialEq, Eq)]
 #[action(namespace = weixin, no_json)]
