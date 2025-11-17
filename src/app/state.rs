@@ -13,9 +13,6 @@ use serde::{Deserialize, Serialize};
 struct LayoutState {
     /// 左侧会话区域宽度。
     session_left_width: f32,
-    /// 聊天消息区域高度（旧字段，兼容使用，不再实际生效）。
-    #[serde(default)]
-    chat_messages_height: Option<f32>,
     /// 聊天输入区域高度（Pixels -> f32）。
     #[serde(default)]
     chat_input_height: Option<f32>,
@@ -70,7 +67,6 @@ impl Preferences {
         let mut state = if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
             serde_json::from_str::<LayoutState>(&json).unwrap_or(LayoutState {
                 session_left_width: 200.0,
-                chat_messages_height: None,
                 chat_input_height: None,
                 theme_mode: Some(self.theme_mode),
                 font_size: Some(self.font_size),
@@ -78,7 +74,6 @@ impl Preferences {
         } else {
             LayoutState {
                 session_left_width: 200.0,
-                chat_messages_height: None,
                 chat_input_height: None,
                 theme_mode: Some(self.theme_mode),
                 font_size: Some(self.font_size),
@@ -251,8 +246,7 @@ impl WeixinApp {
                     s.drag_start_width = s.left_width;
                 });
 
-                // 优先使用新的输入区域高度；如果不存在，则兼容旧的 chat_messages_height 字段。
-                if let Some(h) = state.chat_input_height.or(state.chat_messages_height) {
+                if let Some(h) = state.chat_input_height {
                     let height = px(h);
                     chat_area.update(cx, |area, cx_chat| {
                         area.set_input_height(height, cx_chat);
@@ -277,7 +271,6 @@ impl WeixinApp {
         let mut state = if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
             serde_json::from_str::<LayoutState>(&json).unwrap_or(LayoutState {
                 session_left_width: width,
-                chat_messages_height: None,
                 chat_input_height: Some(chat_input_height),
                 theme_mode: None,
                 font_size: None,
@@ -285,7 +278,6 @@ impl WeixinApp {
         } else {
             LayoutState {
                 session_left_width: width,
-                chat_messages_height: None,
                 chat_input_height: Some(chat_input_height),
                 theme_mode: None,
                 font_size: None,

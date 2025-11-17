@@ -1,13 +1,13 @@
+use crate::app::state::Preferences;
 use crate::ui::theme::{Theme, ThemeMode};
 use crate::ui::widgets::setting_card;
-use crate::app::state::Preferences;
 use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
     button::Button,
     h_flex,
-    popover::{Popover, PopoverContent},
+    popover::Popover,
     slider::{Slider, SliderEvent, SliderState},
-    v_flex, ActiveTheme, ContextModal, Icon, Selectable, Sizable,
+    v_flex, ActiveTheme, Icon, Selectable, Sizable, WindowExt,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -31,6 +31,21 @@ enum FontSize {
     Large,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ThemeHover {
+    None,
+    Light,
+    Dark,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LanguageHover {
+    None,
+    ChineseSimplified,
+    ChineseTraditional,
+    English,
+}
+
 pub struct SettingsWindow {
     active_tab_ix: usize,
     current_language: String,
@@ -42,6 +57,8 @@ pub struct SettingsWindow {
     /// Current font size value used by the slider (in px).
     current_font_size_value: f32,
     _theme_observer: Option<gpui::Subscription>,
+    theme_hover: ThemeHover,
+    language_hover: LanguageHover,
 }
 
 impl EventEmitter<DismissEvent> for SettingsWindow {}
@@ -76,27 +93,28 @@ impl SettingsWindow {
         });
 
         // Slider 变化时，映射到具体像素并更新全局字体大小
-        let font_slider_subscription = cx.subscribe(&font_slider, |this, _, event: &SliderEvent, cx| {
-            if let SliderEvent::Change(value) = event {
-                let idx = value.start().round().clamp(0.0, 7.0) as i32;
-                let size = match idx {
-                    0 => 14.0, // 小
-                    1 => 16.0, // 标准
-                    2 => 17.0,
-                    3 => 18.0,
-                    4 => 19.0,
-                    5 => 20.0,
-                    6 => 21.0,
-                    7 => 22.0, // 大
-                    _ => 16.0,
-                };
-                this.current_font_size_value = size;
-                gpui_component::Theme::global_mut(cx).font_size = px(size);
-                // 保存到偏好 JSON
-                Preferences::save_from_app(cx);
-                cx.refresh_windows();
-            }
-        });
+        let font_slider_subscription =
+            cx.subscribe(&font_slider, |this, _, event: &SliderEvent, cx| {
+                if let SliderEvent::Change(value) = event {
+                    let idx = value.start().round().clamp(0.0, 7.0) as i32;
+                    let size = match idx {
+                        0 => 14.0, // 小
+                        1 => 16.0, // 标准
+                        2 => 17.0,
+                        3 => 18.0,
+                        4 => 19.0,
+                        5 => 20.0,
+                        6 => 21.0,
+                        7 => 22.0, // 大
+                        _ => 16.0,
+                    };
+                    this.current_font_size_value = size;
+                    gpui_component::Theme::global_mut(cx).font_size = px(size);
+                    // 保存到偏好 JSON
+                    Preferences::save_from_app(cx);
+                    cx.refresh_windows();
+                }
+            });
 
         Self {
             active_tab_ix: 1,
@@ -106,6 +124,8 @@ impl SettingsWindow {
             font_slider_subscription,
             current_font_size_value: initial_font_size,
             _theme_observer: Some(theme_observer),
+            theme_hover: ThemeHover::None,
+            language_hover: LanguageHover::None,
         }
     }
 
@@ -271,12 +291,7 @@ impl SettingsWindow {
                     .items_center()
                     .py_2()
                     .child(label)
-                    .child(
-                        h_flex()
-                            .flex_1()
-                            .justify_end()
-                            .child(slider),
-                    )
+                    .child(h_flex().flex_1().justify_end().child(slider))
             };
             v_flex()
                 .gap_0()
@@ -476,70 +491,92 @@ impl SettingsWindow {
             ThemeMode::Dark => "深色模式".to_string(),
         };
 
+        let settings = cx.entity();
+
         Popover::new("theme-popover")
+            .appearance(false)
             .anchor(gpui::Corner::BottomLeft)
             .trigger(Self::general_select_trigger_button("theme-btn", label, cx))
-            .content(move |window, cx| {
-                let theme_popover = cx.theme().popover;
-                let light_hovered = cx.new(|_| false);
-                let dark_hovered = cx.new(|_| false);
+            .content(move |_, window, cx| {
+                let theme = cx.theme();
 
-                cx.new(|cx| {
-                    PopoverContent::new(window, cx, move |_, cx| {
-                        let theme = cx.theme();
+                let theme_hover = settings.read(cx).theme_hover;
+                let light_hovered = matches!(theme_hover, ThemeHover::Light);
+                let dark_hovered = matches!(theme_hover, ThemeHover::Dark);
 
-                        v_flex()
-                            .w(crate::ui::constants::popover_width_sm())
-                            .gap_0()
-                            .py_2()
-                            .text_color(theme.foreground)
-                            .child({
-                                let hovered = *light_hovered.read(cx);
-                                let state = light_hovered.clone();
-                                Self::render_static_theme_item(
-                                    "theme-light",
-                                    "浅色模式",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        Theme::set_light(cx);
-                                        // 保存主题偏好
-                                        Preferences::save_from_app(cx);
-                                        cx.refresh_windows();
-                                        window.push_notification("切换到浅色主题", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .child({
-                                let hovered = *dark_hovered.read(cx);
-                                let state = dark_hovered.clone();
-                                Self::render_static_theme_item(
-                                    "theme-dark",
-                                    "深色模式",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        Theme::set_dark(cx);
-                                        // 保存主题偏好
-                                        Preferences::save_from_app(cx);
-                                        cx.refresh_windows();
-                                        window.push_notification("切换到深色主题", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .into_any()
-                    })
+                let settings_for_light = settings.clone();
+                let set_light_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_light.update(cx, |this: &mut SettingsWindow, cx| {
+                        this.theme_hover = if is_hovering {
+                            ThemeHover::Light
+                        } else if matches!(this.theme_hover, ThemeHover::Light) {
+                            ThemeHover::None
+                        } else {
+                            this.theme_hover
+                        };
+                        cx.notify();
+                    });
+                };
+
+                let settings_for_dark = settings.clone();
+                let set_dark_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_dark.update(cx, |this: &mut SettingsWindow, cx| {
+                        this.theme_hover = if is_hovering {
+                            ThemeHover::Dark
+                        } else if matches!(this.theme_hover, ThemeHover::Dark) {
+                            ThemeHover::None
+                        } else {
+                            this.theme_hover
+                        };
+                        cx.notify();
+                    });
+                };
+
+                let settings_for_light_click = settings.clone();
+                let settings_for_dark_click = settings.clone();
+
+                v_flex()
+                    .w(crate::ui::constants::popover_width_sm())
+                    .gap_0()
+                    .py_2()
+                    .bg(theme.popover)
                     .p_1()
-                    .bg(theme_popover)
                     .rounded(crate::ui::constants::radius_md())
                     .shadow_md()
-                })
+                    .child(Self::render_static_theme_item(
+                        "theme-light",
+                        "浅色模式",
+                        light_hovered,
+                        set_light_hover,
+                        cx.listener(move |_, _, window, cx| {
+                            Theme::set_light(cx);
+                            Preferences::save_from_app(cx);
+                            cx.refresh_windows();
+                            window.push_notification("切换到浅色主题", cx);
+                            cx.emit(gpui::DismissEvent);
+                            _ = settings_for_light_click.update(cx, |this: &mut SettingsWindow, cx| {
+                                this.theme_hover = ThemeHover::None;
+                                cx.notify();
+                            });
+                        }),
+                    ))
+                    .child(Self::render_static_theme_item(
+                        "theme-dark",
+                        "深色模式",
+                        dark_hovered,
+                        set_dark_hover,
+                        cx.listener(move |_, _, window, cx| {
+                            Theme::set_dark(cx);
+                            Preferences::save_from_app(cx);
+                            cx.refresh_windows();
+                            window.push_notification("切换到深色主题", cx);
+                            cx.emit(gpui::DismissEvent);
+                            _ = settings_for_dark_click.update(cx, |this: &mut SettingsWindow, cx| {
+                                this.theme_hover = ThemeHover::None;
+                                cx.notify();
+                            });
+                        }),
+                    ))
             })
     }
 
@@ -568,7 +605,7 @@ impl SettingsWindow {
         FSet: Fn(bool, &mut App) + Clone + 'static,
         L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
     {
-        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item(
+        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item_compact(
             id,
             label,
             hovered,
@@ -655,84 +692,120 @@ impl SettingsWindow {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let current_language = self.current_language.clone();
+        let settings = cx.entity();
 
         Popover::new("language-popover")
+            .appearance(false)
             .anchor(gpui::Corner::BottomRight)
             .trigger(Self::general_select_trigger_button(
                 "language-btn",
                 current_language.clone(),
                 cx,
             ))
-            .content(move |window, cx| {
-                let theme_popover = cx.theme().popover;
-                let chinese_hovered = cx.new(|_| false);
-                let traditional_hovered = cx.new(|_| false);
-                let english_hovered = cx.new(|_| false);
+            .content(move |_, window, cx| {
+                let theme = cx.theme();
 
-                cx.new(|cx| {
-                    PopoverContent::new(window, cx, move |_, cx| {
-                        let theme = cx.theme();
+                let language_hover = settings.read(cx).language_hover;
+                let chinese_hovered = matches!(language_hover, LanguageHover::ChineseSimplified);
+                let traditional_hovered = matches!(language_hover, LanguageHover::ChineseTraditional);
+                let english_hovered = matches!(language_hover, LanguageHover::English);
 
-                        v_flex()
-                            .w(crate::ui::constants::popover_width_md())
-                            .gap_0()
-                            .py_2()
-                            .text_color(theme.foreground)
-                            .child({
-                                let hovered = *chinese_hovered.read(cx);
-                                let state = chinese_hovered.clone();
-                                Self::render_static_language_item(
-                                    "lang-chinese",
-                                    "简体中文",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        window.push_notification("语言切换功能开发中...", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .child({
-                                let hovered = *traditional_hovered.read(cx);
-                                let state = traditional_hovered.clone();
-                                Self::render_static_language_item(
-                                    "lang-traditional",
-                                    "繁體中文",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        window.push_notification("语言切换功能开发中...", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .child({
-                                let hovered = *english_hovered.read(cx);
-                                let state = english_hovered.clone();
-                                Self::render_static_language_item(
-                                    "lang-english",
-                                    "English",
-                                    hovered,
-                                    move |is_hovering, cx| {
-                                        state.update(cx, |s, _| *s = is_hovering);
-                                    },
-                                    cx.listener(|_, _, window, cx| {
-                                        window.push_notification("语言切换功能开发中...", cx);
-                                        cx.emit(DismissEvent);
-                                    }),
-                                )
-                            })
-                            .into_any()
-                    })
+                let settings_for_chinese = settings.clone();
+                let set_chinese_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_chinese.update(cx, |this: &mut SettingsWindow, cx| {
+                        this.language_hover = if is_hovering {
+                            LanguageHover::ChineseSimplified
+                        } else if matches!(this.language_hover, LanguageHover::ChineseSimplified) {
+                            LanguageHover::None
+                        } else {
+                            this.language_hover
+                        };
+                        cx.notify();
+                    });
+                };
+
+                let settings_for_traditional = settings.clone();
+                let set_traditional_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_traditional.update(cx, |this: &mut SettingsWindow, cx| {
+                        this.language_hover = if is_hovering {
+                            LanguageHover::ChineseTraditional
+                        } else if matches!(this.language_hover, LanguageHover::ChineseTraditional) {
+                            LanguageHover::None
+                        } else {
+                            this.language_hover
+                        };
+                        cx.notify();
+                    });
+                };
+
+                let settings_for_english = settings.clone();
+                let set_english_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_english.update(cx, |this: &mut SettingsWindow, cx| {
+                        this.language_hover = if is_hovering {
+                            LanguageHover::English
+                        } else if matches!(this.language_hover, LanguageHover::English) {
+                            LanguageHover::None
+                        } else {
+                            this.language_hover
+                        };
+                        cx.notify();
+                    });
+                };
+
+                let settings_for_chinese_click = settings.clone();
+                let settings_for_traditional_click = settings.clone();
+                let settings_for_english_click = settings.clone();
+
+                v_flex()
+                    .w(crate::ui::constants::popover_width_md())
+                    .gap_0()
+                    .py_2()
+                    .bg(theme.popover)
                     .p_1()
-                    .bg(theme_popover)
                     .rounded(crate::ui::constants::radius_md())
                     .shadow_md()
-                })
+                    .child(Self::render_static_language_item(
+                        "lang-chinese",
+                        "简体中文",
+                        chinese_hovered,
+                        set_chinese_hover,
+                        cx.listener(move |_, _, window, cx| {
+                            window.push_notification("语言切换功能开发中...", cx);
+                            cx.emit(gpui::DismissEvent);
+                            _ = settings_for_chinese_click.update(cx, |this: &mut SettingsWindow, cx| {
+                                this.language_hover = LanguageHover::None;
+                                cx.notify();
+                            });
+                        }),
+                    ))
+                    .child(Self::render_static_language_item(
+                        "lang-traditional",
+                        "繁體中文",
+                        traditional_hovered,
+                        set_traditional_hover,
+                        cx.listener(move |_, _, window, cx| {
+                            window.push_notification("语言切换功能开发中...", cx);
+                            cx.emit(gpui::DismissEvent);
+                            _ = settings_for_traditional_click.update(cx, |this: &mut SettingsWindow, cx| {
+                                this.language_hover = LanguageHover::None;
+                                cx.notify();
+                            });
+                        }),
+                    ))
+                    .child(Self::render_static_language_item(
+                        "lang-english",
+                        "English",
+                        english_hovered,
+                        set_english_hover,
+                        cx.listener(move |_, _, window, cx| {
+                            window.push_notification("语言切换功能开发中...", cx);
+                            cx.emit(gpui::DismissEvent);
+                            _ = settings_for_english_click.update(cx, |this: &mut SettingsWindow, cx| {
+                                this.language_hover = LanguageHover::None;
+                                cx.notify();
+                            });
+                        }),
+                    ))
             })
     }
 
@@ -758,14 +831,14 @@ impl SettingsWindow {
                     .justify_between()
                     .text_xs()
                     .text_color(theme.muted_foreground)
-                    .child("小")      // 第 1 节：小
-                    .child("标准")    // 第 2 节：标准
-                    .child("")       // 第 3 节
-                    .child("")       // 第 4 节
-                    .child("")       // 第 5 节
-                    .child("")       // 第 6 节
-                    .child("")       // 第 7 节
-                    .child("大"),     // 第 8 节：大
+                    .child("小") // 第 1 节：小
+                    .child("标准") // 第 2 节：标准
+                    .child("") // 第 3 节
+                    .child("") // 第 4 节
+                    .child("") // 第 5 节
+                    .child("") // 第 6 节
+                    .child("") // 第 7 节
+                    .child("大"), // 第 8 节：大
             )
     }
 
@@ -902,7 +975,7 @@ impl Render for SettingsWindow {
                             .w_full()
                             .p_6()
                             .overflow_hidden()
-.child(self.render_content(window, cx)),
+                            .child(self.render_content(window, cx)),
                     ),
             )
     }

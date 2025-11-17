@@ -1,5 +1,5 @@
 use gpui::{div, App, InteractiveElement, IntoElement, ParentElement, Styled, WindowControlArea};
-use gpui_component::{h_flex, input::InputState, input::TextInput, ActiveTheme, Icon, Sizable};
+use gpui_component::{h_flex, input::{Input, InputState}, ActiveTheme, Icon, Sizable};
 
 pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl IntoElement {
     let theme = cx.theme();
@@ -22,7 +22,7 @@ pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl In
                 .rounded(crate::ui::constants::radius_sm())
                 .py_1()
                 .child(
-                    TextInput::new(search_input)
+                    Input::new(search_input)
                         .xsmall()
                         .prefix(
                             div().px_1().child(
@@ -33,7 +33,7 @@ pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl In
                             ),
                         )
                         .text_xs()
-                        .cleanable()
+                        .cleanable(true)
                         .appearance(false),
                 ),
         )

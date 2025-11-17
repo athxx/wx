@@ -11,3 +11,4 @@ pub mod window_controls;
 pub mod group_avatar;
 pub mod setting_card;
 pub mod toggle;
+pub mod virtual_list;

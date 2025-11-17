@@ -7,7 +7,7 @@ use gpui_component::{
     button::{Button, ButtonVariants},
     h_flex,
     highlighter::Language,
-    input::{InputState, TabSize, TextInput},
+    input::{Input, InputState, TabSize},
     scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
     v_flex, v_virtual_list, ActiveTheme, Icon, StyledExt as _, VirtualListScrollHandle,
 };
@@ -124,7 +124,7 @@ impl ChatArea {
             )
             .child(
                 div().flex_1().w_full().px_2().overflow_hidden().child(
-                    TextInput::new(&self.input_state)
+                    Input::new(&self.input_state)
                         .text_sm()
                         .appearance(false)
                         .w_full()
@@ -251,7 +251,9 @@ impl Render for ChatArea {
                             &weixin_colors,
                         );
                         let mut el = div().w_full().child(bubble).into_any_element();
-                        el.layout_as_root(available_space, window, cx)
+                        let bubble_size = el.layout_as_root(available_space, window, cx);
+                        // 为了避免底部消息被裁剪，给每一项略微增加 4px 高度作为安全边距。
+                        gpui::size(bubble_size.width, bubble_size.height + px(4.))
                     })
                     .collect::<Vec<_>>(),
             );

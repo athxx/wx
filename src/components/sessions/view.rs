@@ -1,8 +1,13 @@
 use gpui::{
-    div, App, AppContext, Axis, ClickEvent, Context, Entity, InteractiveElement, IntoElement,
-    ParentElement, Render, StatefulInteractiveElement, Styled, Window,
+    div, App, AppContext, AvailableSpace, ClickEvent, Context, Entity, InteractiveElement,
+    IntoElement, ParentElement, Pixels, Render, StatefulInteractiveElement, Styled, Window,
 };
-use gpui_component::{input::InputState, v_flex, ActiveTheme, StyledExt as _};
+use gpui_component::{
+    input::InputState,
+    scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
+    v_flex, v_virtual_list, ActiveTheme, StyledExt as _, VirtualListScrollHandle,
+};
+use std::rc::Rc;
 
 use crate::models::Contact;
 use crate::ui::theme::Theme;
@@ -12,6 +17,8 @@ pub struct SessionList {
     contacts: Vec<Contact>,
     selected_id: Option<String>,
     pub search_input: Entity<InputState>,
+    scroll_handle: VirtualListScrollHandle,
+    scroll_state: ScrollbarState,
 }
 
 impl SessionList {
@@ -21,6 +28,8 @@ impl SessionList {
             contacts: Vec::new(),
             selected_id: None,
             search_input,
+            scroll_handle: VirtualListScrollHandle::new(),
+            scroll_state: ScrollbarState::default(),
         }
     }
 
@@ -129,9 +138,42 @@ impl SessionList {
 }
 
 impl Render for SessionList {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme().clone();
         let weixin_colors = Theme::weixin_colors(cx);
+
+        let available_space = gpui::size(
+            AvailableSpace::MinContent,
+            AvailableSpace::MinContent,
+        );
+
+        let item_sizes: Rc<Vec<gpui::Size<Pixels>>> = Rc::new(
+            self.contacts
+                .iter()
+                .enumerate()
+                .map(|(i, contact)| {
+                    let row = self.render_session_item(contact, i, cx);
+                    let mut el = row.into_any_element();
+                    el.layout_as_root(available_space, window, cx)
+                })
+                .collect(),
+        );
+        let item_sizes_for_render = item_sizes.clone();
+
+        let list_view = v_virtual_list(
+            cx.entity().clone(),
+            "session-list",
+            item_sizes,
+            move |view, visible_range, _window, cx| {
+                visible_range
+                    .map(|ix| {
+                        let contact = &view.contacts[ix];
+                        view.render_session_item(contact, ix, cx)
+                    })
+                    .collect()
+            },
+        )
+        .track_scroll(&self.scroll_handle);
 
         v_flex()
             .w_full()
@@ -139,16 +181,21 @@ impl Render for SessionList {
             .bg(weixin_colors.session_list_bg)
             .border_color(theme.border)
             .child(
-                v_flex()
-                    .id("session-list-scroll")
-                    .w_full()
-                    .h_full()
-                    .scrollable(Axis::Vertical)
-                    .children(
-                        self.contacts
-                            .iter()
-                            .enumerate()
-                            .map(|(i, contact)| self.render_session_item(contact, i, cx)),
+                div()
+                    .relative()
+                    .size_full()
+                    .child(list_view)
+                    .child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .left_0()
+                            .right_0()
+                            .bottom_0()
+                            .child(
+                                Scrollbar::both(&self.scroll_state, &self.scroll_handle)
+                                    .axis(ScrollbarAxis::Vertical),
+                            ),
                     ),
             )
     }
