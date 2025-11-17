@@ -210,8 +210,10 @@ impl WeixinApp {
         let session_split_state_for_save2 = session_split_state.clone();
         let chat_area_for_save = chat_area.clone();
         cx.subscribe(&chat_area_for_save, move |this, _state, ev: &ChatAreaEvent, cx| {
-            if let ChatAreaEvent::InputResized = ev {
-                this.save_layout(&session_split_state_for_save2, cx);
+            match ev {
+                ChatAreaEvent::InputResized => {
+                    this.save_layout(&session_split_state_for_save2, cx);
+                }
             }
         })
         .detach();

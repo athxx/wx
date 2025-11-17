@@ -5,7 +5,7 @@ use gpui::{
 use gpui_component::{
     input::InputState,
     scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
-    v_flex, v_virtual_list, ActiveTheme, StyledExt as _, VirtualListScrollHandle,
+    v_flex, v_virtual_list, ActiveTheme, VirtualListScrollHandle,
 };
 use std::rc::Rc;
 
@@ -158,7 +158,6 @@ impl Render for SessionList {
                 })
                 .collect(),
         );
-        let item_sizes_for_render = item_sizes.clone();
 
         let list_view = v_virtual_list(
             cx.entity().clone(),

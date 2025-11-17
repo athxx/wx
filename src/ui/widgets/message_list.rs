@@ -3,6 +3,7 @@ use gpui_component::v_flex;
 
 use crate::models::Message;
 
+#[allow(dead_code)]
 pub fn message_list(
     messages: &[Message],
     is_group: bool,

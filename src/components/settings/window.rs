@@ -49,10 +49,12 @@ enum LanguageHover {
 pub struct SettingsWindow {
     active_tab_ix: usize,
     current_language: String,
+    #[allow(dead_code)]
     current_font_size: FontSize,
     /// Slider state for controlling global font size.
     font_slider: Entity<SliderState>,
     /// Subscription to listen slider changes and update global font size.
+    #[allow(dead_code)]
     font_slider_subscription: gpui::Subscription,
     /// Current font size value used by the slider (in px).
     current_font_size_value: f32,
@@ -95,25 +97,24 @@ impl SettingsWindow {
         // Slider 变化时，映射到具体像素并更新全局字体大小
         let font_slider_subscription =
             cx.subscribe(&font_slider, |this, _, event: &SliderEvent, cx| {
-                if let SliderEvent::Change(value) = event {
-                    let idx = value.start().round().clamp(0.0, 7.0) as i32;
-                    let size = match idx {
-                        0 => 14.0, // 小
-                        1 => 16.0, // 标准
-                        2 => 17.0,
-                        3 => 18.0,
-                        4 => 19.0,
-                        5 => 20.0,
-                        6 => 21.0,
-                        7 => 22.0, // 大
-                        _ => 16.0,
-                    };
-                    this.current_font_size_value = size;
-                    gpui_component::Theme::global_mut(cx).font_size = px(size);
-                    // 保存到偏好 JSON
-                    Preferences::save_from_app(cx);
-                    cx.refresh_windows();
-                }
+                let SliderEvent::Change(value) = event;
+                let idx = value.start().round().clamp(0.0, 7.0) as i32;
+                let size = match idx {
+                    0 => 14.0, // 小
+                    1 => 16.0, // 标准
+                    2 => 17.0,
+                    3 => 18.0,
+                    4 => 19.0,
+                    5 => 20.0,
+                    6 => 21.0,
+                    7 => 22.0, // 大
+                    _ => 16.0,
+                };
+                this.current_font_size_value = size;
+                gpui_component::Theme::global_mut(cx).font_size = px(size);
+                // 保存到偏好 JSON
+                Preferences::save_from_app(cx);
+                cx.refresh_windows();
             });
 
         Self {
@@ -497,7 +498,7 @@ impl SettingsWindow {
             .appearance(false)
             .anchor(gpui::Corner::BottomLeft)
             .trigger(Self::general_select_trigger_button("theme-btn", label, cx))
-            .content(move |_, window, cx| {
+            .content(move |_, _window, cx| {
                 let theme = cx.theme();
 
                 let theme_hover = settings.read(cx).theme_hover;
@@ -554,10 +555,13 @@ impl SettingsWindow {
                             cx.refresh_windows();
                             window.push_notification("切换到浅色主题", cx);
                             cx.emit(gpui::DismissEvent);
-                            _ = settings_for_light_click.update(cx, |this: &mut SettingsWindow, cx| {
-                                this.theme_hover = ThemeHover::None;
-                                cx.notify();
-                            });
+                            _ = settings_for_light_click.update(
+                                cx,
+                                |this: &mut SettingsWindow, cx| {
+                                    this.theme_hover = ThemeHover::None;
+                                    cx.notify();
+                                },
+                            );
                         }),
                     ))
                     .child(Self::render_static_theme_item(
@@ -571,10 +575,13 @@ impl SettingsWindow {
                             cx.refresh_windows();
                             window.push_notification("切换到深色主题", cx);
                             cx.emit(gpui::DismissEvent);
-                            _ = settings_for_dark_click.update(cx, |this: &mut SettingsWindow, cx| {
-                                this.theme_hover = ThemeHover::None;
-                                cx.notify();
-                            });
+                            _ = settings_for_dark_click.update(
+                                cx,
+                                |this: &mut SettingsWindow, cx| {
+                                    this.theme_hover = ThemeHover::None;
+                                    cx.notify();
+                                },
+                            );
                         }),
                     ))
             })
@@ -672,6 +679,7 @@ impl SettingsWindow {
         Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
     }
 
+    #[allow(dead_code)]
     fn render_static_font_item<FSet, L>(
         id: &'static str,
         label: &'static str,
@@ -702,12 +710,13 @@ impl SettingsWindow {
                 current_language.clone(),
                 cx,
             ))
-            .content(move |_, window, cx| {
+            .content(move |_, _window, cx| {
                 let theme = cx.theme();
 
                 let language_hover = settings.read(cx).language_hover;
                 let chinese_hovered = matches!(language_hover, LanguageHover::ChineseSimplified);
-                let traditional_hovered = matches!(language_hover, LanguageHover::ChineseTraditional);
+                let traditional_hovered =
+                    matches!(language_hover, LanguageHover::ChineseTraditional);
                 let english_hovered = matches!(language_hover, LanguageHover::English);
 
                 let settings_for_chinese = settings.clone();
@@ -772,10 +781,13 @@ impl SettingsWindow {
                         cx.listener(move |_, _, window, cx| {
                             window.push_notification("语言切换功能开发中...", cx);
                             cx.emit(gpui::DismissEvent);
-                            _ = settings_for_chinese_click.update(cx, |this: &mut SettingsWindow, cx| {
-                                this.language_hover = LanguageHover::None;
-                                cx.notify();
-                            });
+                            _ = settings_for_chinese_click.update(
+                                cx,
+                                |this: &mut SettingsWindow, cx| {
+                                    this.language_hover = LanguageHover::None;
+                                    cx.notify();
+                                },
+                            );
                         }),
                     ))
                     .child(Self::render_static_language_item(
@@ -786,10 +798,13 @@ impl SettingsWindow {
                         cx.listener(move |_, _, window, cx| {
                             window.push_notification("语言切换功能开发中...", cx);
                             cx.emit(gpui::DismissEvent);
-                            _ = settings_for_traditional_click.update(cx, |this: &mut SettingsWindow, cx| {
-                                this.language_hover = LanguageHover::None;
-                                cx.notify();
-                            });
+                            _ = settings_for_traditional_click.update(
+                                cx,
+                                |this: &mut SettingsWindow, cx| {
+                                    this.language_hover = LanguageHover::None;
+                                    cx.notify();
+                                },
+                            );
                         }),
                     ))
                     .child(Self::render_static_language_item(
@@ -800,10 +815,13 @@ impl SettingsWindow {
                         cx.listener(move |_, _, window, cx| {
                             window.push_notification("语言切换功能开发中...", cx);
                             cx.emit(gpui::DismissEvent);
-                            _ = settings_for_english_click.update(cx, |this: &mut SettingsWindow, cx| {
-                                this.language_hover = LanguageHover::None;
-                                cx.notify();
-                            });
+                            _ = settings_for_english_click.update(
+                                cx,
+                                |this: &mut SettingsWindow, cx| {
+                                    this.language_hover = LanguageHover::None;
+                                    cx.notify();
+                                },
+                            );
                         }),
                     ))
             })

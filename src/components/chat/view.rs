@@ -1,15 +1,14 @@
 use gpui::{
-    div, px, size, AnyElement, App, AppContext, AvailableSpace, Axis, Context, Entity,
-    EventEmitter, InteractiveElement, IntoElement, ParentElement, Pixels, Render,
-    StatefulInteractiveElement, Styled, Window, WindowControlArea,
+    div, px, size, AnyElement, App, AppContext, AvailableSpace, Context, Entity, EventEmitter,
+    InteractiveElement, IntoElement, ParentElement, Pixels, Render, Styled, Window,
+    WindowControlArea,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
     h_flex,
-    highlighter::Language,
-    input::{Input, InputState, TabSize},
+    input::{Input, InputState},
     scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
-    v_flex, v_virtual_list, ActiveTheme, Icon, StyledExt as _, VirtualListScrollHandle,
+    v_flex, v_virtual_list, ActiveTheme, Icon, VirtualListScrollHandle,
 };
 use std::rc::Rc;
 
@@ -249,8 +248,6 @@ impl Render for ChatArea {
                     })
                     .collect::<Vec<_>>(),
             );
-            let item_sizes_for_render = item_sizes.clone();
-
             v_virtual_list(
                 cx.entity().clone(),
                 "chat-messages",
@@ -260,7 +257,6 @@ impl Render for ChatArea {
                         return Vec::new();
                     };
                     let is_group = session.contact.is_group;
-                    let _item_sizes = item_sizes_for_render.clone();
 
                     visible_range
                         .map(|ix| {

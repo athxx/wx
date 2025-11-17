@@ -1,5 +1,5 @@
 use gpui::{
-    div, App, AppContext, Context, Corner, Element, Entity, InteractiveElement,
+    div, App, AppContext, Context, Corner, Entity, InteractiveElement,
     IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Window,
 };
 use gpui_component::{
@@ -135,8 +135,7 @@ impl ToolBar {
                                 .text_color(theme.muted_foreground),
                         ),
                 )
-                .content(move |_, window, cx| {
-                    let theme = cx.theme();
+                .content(move |_, _window, cx| {
 
                     let phone_hover = toolbar.read(cx).phone_hover;
                     let video_hovered = matches!(phone_hover, PhonePopoverHover::Video);
@@ -240,7 +239,7 @@ impl ToolBar {
                                     .text_color(theme.muted_foreground),
                             ),
                     )
-                    .content(move |_, window, cx| {
+                    .content(move |_, _window, cx| {
                         let theme = cx.theme();
 
                         let menu_hover = toolbar.read(cx).menu_hover;
@@ -443,7 +442,7 @@ impl ToolBar {
                                     "设置",
                                     settings_hovered,
                                     set_settings_hover,
-                                    cx.listener(move |_, _, window, cx| {
+                                    cx.listener(move |_, _, _window, cx| {
                                         crate::app::WeixinApp::open_settings_window(cx);
                                         cx.emit(gpui::DismissEvent);
                                         _ = toolbar_for_settings_click.update(cx, |this: &mut ToolBar, cx| {
