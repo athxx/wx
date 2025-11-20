@@ -9,9 +9,9 @@ use gpui_component::{
 };
 use std::rc::Rc;
 
+use crate::app::actions::{OpenChatWindow, SelectSession};
 use crate::models::Contact;
 use crate::ui::theme::Theme;
-use crate::app::actions::{OpenChatWindow, SelectSession};
 
 pub struct SessionList {
     contacts: Vec<Contact>,
@@ -142,10 +142,7 @@ impl Render for SessionList {
         let theme = cx.theme().clone();
         let weixin_colors = Theme::weixin_colors(cx);
 
-        let available_space = gpui::size(
-            AvailableSpace::MinContent,
-            AvailableSpace::MinContent,
-        );
+        let available_space = gpui::size(AvailableSpace::MinContent, AvailableSpace::MinContent);
 
         let item_sizes: Rc<Vec<gpui::Size<Pixels>>> = Rc::new(
             self.contacts
@@ -180,22 +177,18 @@ impl Render for SessionList {
             .bg(weixin_colors.session_list_bg)
             .border_color(theme.border)
             .child(
-                div()
-                    .relative()
-                    .size_full()
-                    .child(list_view)
-                    .child(
-                        div()
-                            .absolute()
-                            .top_0()
-                            .left_0()
-                            .right_0()
-                            .bottom_0()
-                            .child(
-                                Scrollbar::both(&self.scroll_state, &self.scroll_handle)
-                                    .axis(ScrollbarAxis::Vertical),
-                            ),
-                    ),
+                div().relative().size_full().child(list_view).child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .right_0()
+                        .bottom_0()
+                        .child(
+                            Scrollbar::both(&self.scroll_state, &self.scroll_handle)
+                                .axis(ScrollbarAxis::Vertical),
+                        ),
+                ),
             )
     }
 }

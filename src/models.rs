@@ -43,6 +43,22 @@ impl Contact {
         self.avatar_members = members.into_iter().take(4).collect();
         self
     }
+
+    /// 返回用于界面显示的标题文本
+    ///
+    /// - 普通联系人：直接使用 name
+    /// - 群聊：如果有成员数量，使用 `名称 ~ (数量)`，否则仍然使用 name
+    pub fn display_title(&self) -> String {
+        if self.is_group {
+            if let Some(count) = self.member_count {
+                format!("{} ~ ({})", self.name, count)
+            } else {
+                self.name.clone()
+            }
+        } else {
+            self.name.clone()
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

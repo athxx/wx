@@ -1,8 +1,8 @@
 pub mod app;
 mod assets;
 pub mod components;
-mod models;
 mod infra;
+mod models;
 mod ui;
 
 use assets::Assets;

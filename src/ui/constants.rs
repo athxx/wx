@@ -121,12 +121,9 @@ pub fn drag_handle_height() -> Pixels {
     px(4.)
 }
 pub fn hairline() -> Pixels {
-    px(1.)
+    px(0.7)
 }
 
-pub fn settings_avatar_size() -> Pixels {
-    px(50.)
-}
 pub fn about_logo_size() -> Pixels {
     px(80.)
 }
@@ -149,6 +146,12 @@ pub fn settings_window_height() -> Pixels {
     px(680.)
 }
 
+pub fn settings_window_content_height() -> Pixels {
+    let total = settings_window_height().as_f32();
+    let header = settings_title_height().as_f32();
+    px(total - header)
+}
+
 // Toggle tokens
 pub fn toggle_width() -> Pixels {
     px(40.)
@@ -167,6 +170,18 @@ pub fn toggle_handle_radius() -> Pixels {
 }
 pub fn toggle_padding_x() -> Pixels {
     px(2.)
+}
+
+pub fn settings_small_input_width() -> Pixels {
+    px(35.)
+}
+
+pub fn settings_shortcut_input_min_width() -> Pixels {
+    px(80.)
+}
+
+pub fn settings_shortcut_input_max_width() -> Pixels {
+    px(200.)
 }
 
 pub fn app_window_width() -> Pixels {

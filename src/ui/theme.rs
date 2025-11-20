@@ -1,97 +1,84 @@
-use gpui::{rgb, App, Hsla};
+﻿use gpui::{rgb, App, Hsla};
 use gpui_component::{ActiveTheme as _, Theme as GpuiTheme, ThemeMode as GpuiThemeMode};
 
-// Re-export ThemeMode from gpui-component
 pub use gpui_component::ThemeMode;
 
-/// WeChat特定的主题颜色扩展
 #[derive(Debug, Clone)]
 pub struct WeixinThemeColors {
-    // 布局背景色
-    pub toolbar_bg: Hsla,      // 左侧工具栏背景 EDEDED
-    pub session_list_bg: Hsla, // 中间会话列表背景 F7F7F7
-    pub chat_area_bg: Hsla,    // 右侧聊天区域背景 EDEDED
-    pub search_bar_bg: Hsla,   // 搜索框和加号背景 EDEDED
-    pub item_hover: Hsla,      // hover颜色 EAEAEA
-    pub item_selected: Hsla,   // 选中颜色 DEDEDE
-
-    // 消息气泡
+    pub toolbar_bg: Hsla,
+    pub session_list_bg: Hsla,
+    pub chat_area_bg: Hsla,
+    pub search_bar_bg: Hsla,
+    pub item_hover: Hsla,
+    pub item_selected: Hsla,
+    pub settings_button_bg: Hsla,
+    pub settings_button_hover: Hsla,
+    pub settings_button_active: Hsla,
     pub message_bubble_self: Hsla,
     pub message_bubble_other: Hsla,
     pub message_text_self: Hsla,
     pub message_text_other: Hsla,
-
-    // WeChat特色的绿色
     pub weixin_green: Hsla,
-
-    // 未读徽章
     pub unread_badge: Hsla,
-
-    // 输入框光标颜色
     pub caret: Hsla,
+    pub storage_path_text: Hsla,
+    pub input_field_bg: Hsla,
+    pub input_field_focus: Hsla,
 }
 
 impl WeixinThemeColors {
     pub fn light() -> Self {
         Self {
-            // 布局背景色
-            toolbar_bg: rgb(0xEDEDED).into(),      // 左侧工具栏背景
-            session_list_bg: rgb(0xF7F7F7).into(), // 中间会话列表背景
-            chat_area_bg: rgb(0xEDEDED).into(),    // 右侧聊天区域背景
-            search_bar_bg: rgb(0xEDEDED).into(),   // 搜索框和加号背景
-            item_hover: rgb(0xEAEAEA).into(),      // hover颜色
-            item_selected: rgb(0xDEDEDE).into(),   // 选中颜色
-
-            // 消息气泡
-            message_bubble_self: rgb(0x95ec69).into(),
-            message_bubble_other: rgb(0xffffff).into(),
+            toolbar_bg: rgb(0xEDEDED).into(),
+            session_list_bg: rgb(0xF7F7F7).into(),
+            chat_area_bg: rgb(0xEDEDED).into(),
+            search_bar_bg: rgb(0xEDEDED).into(),
+            item_hover: rgb(0xEAEAEA).into(),
+            item_selected: rgb(0xDEDEDE).into(),
+            settings_button_bg: rgb(0xEAEAEA).into(),
+            settings_button_hover: rgb(0xE4E4E4).into(),
+            settings_button_active: rgb(0xE4E4E4).into(),
+            message_bubble_self: rgb(0x95EC69).into(),
+            message_bubble_other: rgb(0xFFFFFF).into(),
             message_text_self: rgb(0x000000).into(),
             message_text_other: rgb(0x333333).into(),
-
-            // WeChat特色的绿色
-            weixin_green: rgb(0x07c160).into(),
-
-            // 未读徽章
-            unread_badge: rgb(0xfa5151).into(),
-
-            // 输入框光标颜色 - 使用微信绿
-            caret: rgb(0x07c160).into(),
+            weixin_green: rgb(0x07C160).into(),
+            unread_badge: rgb(0xFA5151).into(),
+            caret: rgb(0x07C160).into(),
+            storage_path_text: rgb(0x576B95).into(),
+            input_field_bg: rgb(0xFFFFFF).into(),
+            input_field_focus: rgb(0x44D087).into(),
         }
     }
 
     pub fn dark() -> Self {
         Self {
-            // 布局背景色 - 深色模式
-            toolbar_bg: rgb(0x2A2A2A).into(),      // 左侧工具栏背景
-            session_list_bg: rgb(0x1F1F1F).into(), // 中间会话列表背景
-            chat_area_bg: rgb(0x2A2A2A).into(),    // 右侧聊天区域背景
-            search_bar_bg: rgb(0x2A2A2A).into(),   // 搜索框和加号背景
-            item_hover: rgb(0x333333).into(),      // hover颜色
-            item_selected: rgb(0x3A3A3A).into(),   // 选中颜色
-
-            // 消息气泡
-            message_bubble_self: rgb(0x95ec69).into(),
-            message_bubble_other: rgb(0x3a3a3a).into(),
+            toolbar_bg: rgb(0x2A2A2A).into(),
+            session_list_bg: rgb(0x1F1F1F).into(),
+            chat_area_bg: rgb(0x2A2A2A).into(),
+            search_bar_bg: rgb(0x2A2A2A).into(),
+            item_hover: rgb(0x333333).into(),
+            item_selected: rgb(0x3A3A3A).into(),
+            settings_button_bg: rgb(0x2F2F2F).into(),
+            settings_button_hover: rgb(0x353535).into(),
+            settings_button_active: rgb(0x353535).into(),
+            message_bubble_self: rgb(0x95EC69).into(),
+            message_bubble_other: rgb(0x3A3A3A).into(),
             message_text_self: rgb(0x000000).into(),
-            message_text_other: rgb(0xe6e6e6).into(),
-
-            // WeChat特色的绿色
-            weixin_green: rgb(0x07c160).into(),
-
-            // 未读徽章
-            unread_badge: rgb(0xfa5151).into(),
-
-            // 输入框光标颜色 - 使用微信绿
-            caret: rgb(0x07c160).into(),
+            message_text_other: rgb(0xE6E6E6).into(),
+            weixin_green: rgb(0x07C160).into(),
+            unread_badge: rgb(0xFA5151).into(),
+            caret: rgb(0x07C160).into(),
+            storage_path_text: rgb(0x7D90A9).into(),
+            input_field_bg: rgb(0x2E2E2E).into(),
+            input_field_focus: rgb(0x0E9A51).into(),
         }
     }
 }
 
-/// 主题助手 - 提供对gpui-component主题系统的便捷访问
 pub struct Theme;
 
 impl Theme {
-    /// 获取WeChat特定的主题颜色
     pub fn weixin_colors(cx: &App) -> WeixinThemeColors {
         match cx.theme().mode {
             GpuiThemeMode::Light => WeixinThemeColors::light(),
@@ -99,19 +86,37 @@ impl Theme {
         }
     }
 
-    /// 设置为亮色主题
     pub fn set_light(cx: &mut App) {
         GpuiTheme::change(GpuiThemeMode::Light, None, cx);
-        // 应用微信主题颜色
         let colors = WeixinThemeColors::light();
-        GpuiTheme::global_mut(cx).caret = colors.caret;
+        let theme = GpuiTheme::global_mut(cx);
+        theme.caret = colors.caret;
+        theme.ring = colors.input_field_focus;
     }
 
-    /// 设置为暗色主题
     pub fn set_dark(cx: &mut App) {
         GpuiTheme::change(GpuiThemeMode::Dark, None, cx);
-        // 应用微信主题颜色
         let colors = WeixinThemeColors::dark();
-        GpuiTheme::global_mut(cx).caret = colors.caret;
+        let theme = GpuiTheme::global_mut(cx);
+        theme.caret = colors.caret;
+        theme.ring = colors.input_field_focus;
+    }
+
+    pub fn general_select_button_colors(cx: &App) -> (Hsla, Hsla, Hsla, Hsla) {
+        let colors = Self::weixin_colors(cx);
+        match cx.theme().mode {
+            GpuiThemeMode::Light => (
+                rgb(0xFFFFFF).into(),
+                rgb(0xF2F2F2).into(),
+                rgb(0xF2F2F2).into(),
+                rgb(0xEBEBEB).into(),
+            ),
+            GpuiThemeMode::Dark => (
+                colors.search_bar_bg,
+                colors.item_hover,
+                colors.item_hover,
+                colors.item_selected,
+            ),
+        }
     }
 }

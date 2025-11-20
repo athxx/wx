@@ -1,5 +1,5 @@
-use crate::models::{Contact, Message};
 use super::sample_data;
+use crate::models::{Contact, Message};
 
 pub struct MemoryContactsRepo;
 

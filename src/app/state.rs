@@ -1,10 +1,10 @@
+use crate::app::actions::{SelectSession, ToolbarClicked};
 use crate::components::{ChatArea, ChatAreaEvent, SessionList, ToolBar};
 use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
+use crate::ui::fixed_resizable::{FixedResizableEvent, FixedResizableState};
 use crate::ui::theme::{Theme, ThemeMode};
 use gpui::{px, App, AppContext, Context, Entity, Window};
-use crate::ui::fixed_resizable::{FixedResizableEvent, FixedResizableState};
-use crate::app::actions::{SelectSession, ToolbarClicked};
 use gpui_component::ActiveTheme;
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +22,17 @@ struct LayoutState {
     /// 基础字体大小，单位 px。
     #[serde(default)]
     font_size: Option<f32>,
+}
+
+impl LayoutState {
+    /// 从配置文件加载布局状态，如果失败则返回给定的默认值
+    fn load_or(default: LayoutState) -> Self {
+        if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
+            serde_json::from_str::<LayoutState>(&json).unwrap_or(default)
+        } else {
+            default
+        }
+    }
 }
 
 #[cfg(debug_assertions)]
@@ -64,21 +75,12 @@ impl Preferences {
     /// 将当前偏好写入磁盘（与布局一起保存在同一个 JSON）。
     pub fn save(&self) {
         // 先尝试读取已有布局状态，如果不存在则创建默认值。
-        let mut state = if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
-            serde_json::from_str::<LayoutState>(&json).unwrap_or(LayoutState {
-                session_left_width: 200.0,
-                chat_input_height: None,
-                theme_mode: Some(self.theme_mode),
-                font_size: Some(self.font_size),
-            })
-        } else {
-            LayoutState {
-                session_left_width: 200.0,
-                chat_input_height: None,
-                theme_mode: Some(self.theme_mode),
-                font_size: Some(self.font_size),
-            }
-        };
+        let mut state = LayoutState::load_or(LayoutState {
+            session_left_width: 200.0,
+            chat_input_height: None,
+            theme_mode: Some(self.theme_mode),
+            font_size: Some(self.font_size),
+        });
 
         state.theme_mode = Some(self.theme_mode);
         state.font_size = Some(self.font_size);
@@ -199,23 +201,25 @@ impl WeixinApp {
 
         // 监听分隔状态变更，在松开鼠标时持久化布局
         let session_split_state_for_save = session_split_state.clone();
-        cx.subscribe(&session_split_state, move |this, _state, ev: &FixedResizableEvent, cx| {
-            match ev {
+        cx.subscribe(
+            &session_split_state,
+            move |this, _state, ev: &FixedResizableEvent, cx| match ev {
                 FixedResizableEvent::Resized => this.save_layout(&session_split_state_for_save, cx),
-            }
-        })
+            },
+        )
         .detach();
 
         // 监听聊天输入框高度变更，结束拖动时持久化布局
         let session_split_state_for_save2 = session_split_state.clone();
         let chat_area_for_save = chat_area.clone();
-        cx.subscribe(&chat_area_for_save, move |this, _state, ev: &ChatAreaEvent, cx| {
-            match ev {
+        cx.subscribe(
+            &chat_area_for_save,
+            move |this, _state, ev: &ChatAreaEvent, cx| match ev {
                 ChatAreaEvent::InputResized => {
                     this.save_layout(&session_split_state_for_save2, cx);
                 }
-            }
-        })
+            },
+        )
         .detach();
 
         let theme_observer = cx.observe_global::<Theme>(|_this, cx| {
@@ -258,7 +262,11 @@ impl WeixinApp {
         }
     }
 
-    fn save_layout(&self, session_split_state: &Entity<FixedResizableState>, cx: &mut Context<Self>) {
+    fn save_layout(
+        &self,
+        session_split_state: &Entity<FixedResizableState>,
+        cx: &mut Context<Self>,
+    ) {
         let left_width = session_split_state.read(cx).left_width;
         // 将 Pixels 转为标量宽度，依赖于 gpui 对 Pixels 的 Into<f32> 实现。
         let width: f32 = left_width.into();
@@ -270,21 +278,12 @@ impl WeixinApp {
         };
 
         // 读取已有的状态以保留主题设置，如果不存在则创建默认值。
-        let mut state = if let Ok(json) = std::fs::read_to_string(CONFIG_FILE) {
-            serde_json::from_str::<LayoutState>(&json).unwrap_or(LayoutState {
-                session_left_width: width,
-                chat_input_height: Some(chat_input_height),
-                theme_mode: None,
-                font_size: None,
-            })
-        } else {
-            LayoutState {
-                session_left_width: width,
-                chat_input_height: Some(chat_input_height),
-                theme_mode: None,
-                font_size: None,
-            }
-        };
+        let mut state = LayoutState::load_or(LayoutState {
+            session_left_width: width,
+            chat_input_height: Some(chat_input_height),
+            theme_mode: None,
+            font_size: None,
+        });
 
         state.session_left_width = width;
         state.chat_input_height = Some(chat_input_height);
@@ -319,28 +318,14 @@ impl WeixinApp {
     pub fn get_current_chat_title(&self) -> String {
         self.chat_state
             .current_session()
-            .map(|s| {
-                if s.contact.is_group {
-                    if let Some(count) = s.contact.member_count {
-                        format!("{} ~ ({})", s.contact.name, count)
-                    } else {
-                        s.contact.name.clone()
-                    }
-                } else {
-                    s.contact.name.clone()
-                }
-            })
+            .map(|s| s.contact.display_title())
             // 如果未选择会话，则不显示任何标题文本
             .unwrap_or_else(String::new)
     }
 
     /// Action: 选择会话，由根视图统一处理。
     /// 如果再次点击当前会话，则视为取消选择，恢复到欢迎界面。
-    pub fn on_action_select_session(
-        &mut self,
-        action: &SelectSession,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn on_action_select_session(&mut self, action: &SelectSession, cx: &mut Context<Self>) {
         let is_same_as_current = self
             .chat_state
             .current_session()
@@ -360,11 +345,7 @@ impl WeixinApp {
     }
 
     /// Action: 工具栏点击，目前先简单打印，后续可以根据 item 做不同操作。
-    pub fn on_action_toolbar_clicked(
-        &mut self,
-        action: &ToolbarClicked,
-        _cx: &mut Context<Self>,
-    ) {
+    pub fn on_action_toolbar_clicked(&mut self, action: &ToolbarClicked, _cx: &mut Context<Self>) {
         println!("Toolbar item clicked: {:?}", action.item);
     }
 }

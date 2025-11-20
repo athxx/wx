@@ -3,8 +3,8 @@ use gpui_component::{Root, TitleBar};
 
 use crate::app::actions::{OpenChatWindow, SelectSession, ToolbarClicked};
 use crate::app::state::{Preferences, WeixinApp};
-use crate::ui::theme::{Theme, ThemeMode};
 use crate::components::{ChatWindow, SettingsWindow};
+use crate::ui::theme::{Theme, ThemeMode};
 
 /// 应用级初始化：注册组件库、主题等。
 pub fn init_app(cx: &mut App) {
@@ -45,38 +45,38 @@ pub fn open_main_window(cx: &mut App) {
         ..Default::default()
     };
 
-        cx.open_window(options, |window, cx| {
-            let app_view = WeixinApp::view(window, cx);
+    cx.open_window(options, |window, cx| {
+        let app_view = WeixinApp::view(window, cx);
 
-            // 在 App 级别路由 SelectSession / ToolbarClicked 动作到 WeixinApp 实例，
-            // 确保通过 window.dispatch_action 触发的动作能够被根 Workspace 处理。
-            {
-                let app_view_for_select = app_view.clone();
-                cx.on_action(move |action: &SelectSession, cx_app: &mut App| {
-                    let _ = app_view_for_select.update(cx_app, |app, cx_weixin| {
-                        app.on_action_select_session(action, cx_weixin);
-                    });
+        // 在 App 级别路由 SelectSession / ToolbarClicked 动作到 WeixinApp 实例，
+        // 确保通过 window.dispatch_action 触发的动作能够被根 Workspace 处理。
+        {
+            let app_view_for_select = app_view.clone();
+            cx.on_action(move |action: &SelectSession, cx_app: &mut App| {
+                let _ = app_view_for_select.update(cx_app, |app, cx_weixin| {
+                    app.on_action_select_session(action, cx_weixin);
                 });
-            }
-
-            {
-                let app_view_for_toolbar = app_view.clone();
-                cx.on_action(move |action: &ToolbarClicked, cx_app: &mut App| {
-                    let _ = app_view_for_toolbar.update(cx_app, |app, cx_weixin| {
-                        app.on_action_toolbar_clicked(action, cx_weixin);
-                    });
-                });
-            }
-
-            // 双击会话时打开独立聊天窗口。
-            cx.on_action(|action: &OpenChatWindow, cx_app: &mut App| {
-                // 这里不依赖 WeixinApp 的内部状态，只根据 contact_id 打开一个新的聊天窗口。
-                open_chat_window(action.contact_id.clone(), cx_app);
             });
+        }
 
-            cx.new(|cx| Root::new(app_view, window, cx))
-        })
-        .expect("failed to open main window");
+        {
+            let app_view_for_toolbar = app_view.clone();
+            cx.on_action(move |action: &ToolbarClicked, cx_app: &mut App| {
+                let _ = app_view_for_toolbar.update(cx_app, |app, cx_weixin| {
+                    app.on_action_toolbar_clicked(action, cx_weixin);
+                });
+            });
+        }
+
+        // 双击会话时打开独立聊天窗口。
+        cx.on_action(|action: &OpenChatWindow, cx_app: &mut App| {
+            // 这里不依赖 WeixinApp 的内部状态，只根据 contact_id 打开一个新的聊天窗口。
+            open_chat_window(action.contact_id.clone(), cx_app);
+        });
+
+        cx.new(|cx| Root::new(app_view, window, cx))
+    })
+    .expect("failed to open main window");
 }
 
 /// 打开设置窗口，并确保同一时间只打开一个实例。
@@ -105,6 +105,7 @@ pub fn open_settings_window(cx: &mut App) {
             height: crate::ui::constants::settings_window_height(),
         }),
         window_decorations: Some(gpui::WindowDecorations::Server),
+        is_resizable: false,
         kind: WindowKind::Normal,
         ..Default::default()
     };

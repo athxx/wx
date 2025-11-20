@@ -1,7 +1,3 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static AVATAR_SEQ: AtomicUsize = AtomicUsize::new(0);
-
 const AVA_SVGS: &[&str] = &[
     "ava/afro.svg",
     "ava/angry-.svg",
@@ -31,11 +27,5 @@ const AVA_SVGS: &[&str] = &[
 pub fn avatar_for_key(key: &str) -> &'static str {
     let h = gpui::hash(&key.to_string()) as usize;
     let ix = h % AVA_SVGS.len();
-    AVA_SVGS[ix]
-}
-
-#[allow(dead_code)]
-pub fn random_avatar_path() -> &'static str {
-    let ix = AVATAR_SEQ.fetch_add(1, Ordering::Relaxed) % AVA_SVGS.len();
     AVA_SVGS[ix]
 }

@@ -65,15 +65,7 @@ impl ChatWindow {
             .find(|c| c.id == contact_id)
         {
             // 构造标题文案，与主窗口保持一致。
-            chat_title = if contact.is_group {
-                if let Some(count) = contact.member_count {
-                    format!("{} ~ ({})", contact.name, count)
-                } else {
-                    contact.name.clone()
-                }
-            } else {
-                contact.name.clone()
-            };
+            chat_title = contact.display_title();
 
             let mut session = ChatSession::new(contact.clone());
             session.messages = sessions_repo.get_messages(&contact);

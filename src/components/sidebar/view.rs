@@ -1,12 +1,11 @@
 use gpui::{
-    div, App, AppContext, Context, Corner, Entity, InteractiveElement,
-    IntoElement, ParentElement, Render, StatefulInteractiveElement, Styled, Window,
+    div, App, AppContext, Context, Corner, Entity, InteractiveElement, IntoElement, ParentElement,
+    Render, StatefulInteractiveElement, Styled, Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
     popover::Popover,
-    v_flex, ActiveTheme, Icon,
-    WindowExt,
+    v_flex, ActiveTheme, Icon, WindowExt,
 };
 
 use crate::ui::theme::Theme;
@@ -187,10 +186,13 @@ impl ToolBar {
                                 cx.listener(move |_, _, window, cx| {
                                     window.push_notification("视频通话功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
-                                    _ = toolbar_for_video_click.update(cx, |this: &mut ToolBar, cx| {
-                                        this.phone_hover = PhonePopoverHover::None;
-                                        cx.notify();
-                                    });
+                                    _ = toolbar_for_video_click.update(
+                                        cx,
+                                        |this: &mut ToolBar, cx| {
+                                            this.phone_hover = PhonePopoverHover::None;
+                                            cx.notify();
+                                        },
+                                    );
                                 }),
                             ),
                         )
@@ -203,10 +205,13 @@ impl ToolBar {
                                 cx.listener(move |_, _, window, cx| {
                                     window.push_notification("语音通话功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
-                                    _ = toolbar_for_voice_click.update(cx, |this: &mut ToolBar, cx| {
-                                        this.phone_hover = PhonePopoverHover::None;
-                                        cx.notify();
-                                    });
+                                    _ = toolbar_for_voice_click.update(
+                                        cx,
+                                        |this: &mut ToolBar, cx| {
+                                            this.phone_hover = PhonePopoverHover::None;
+                                            cx.notify();
+                                        },
+                                    );
                                 }),
                             ),
                         )
@@ -247,7 +252,8 @@ impl ToolBar {
                         let menu_hover = toolbar.read(cx).menu_hover;
                         let video_live_hovered = matches!(menu_hover, MenuPopoverHover::VideoLive);
                         let chat_files_hovered = matches!(menu_hover, MenuPopoverHover::ChatFiles);
-                        let chat_history_hovered = matches!(menu_hover, MenuPopoverHover::ChatHistory);
+                        let chat_history_hovered =
+                            matches!(menu_hover, MenuPopoverHover::ChatHistory);
                         let lock_hovered = matches!(menu_hover, MenuPopoverHover::Lock);
                         let feedback_hovered = matches!(menu_hover, MenuPopoverHover::Feedback);
                         let settings_hovered = matches!(menu_hover, MenuPopoverHover::Settings);
@@ -359,15 +365,15 @@ impl ToolBar {
                                     video_live_hovered,
                                     set_video_live_hover,
                                     cx.listener(move |_, _, window, cx| {
-                                        window.push_notification(
-                                            "视频号直播伴侣功能开发中...",
-                                            cx,
-                                        );
+                                        window.push_notification("视频号直播伴侣功能开发中...", cx);
                                         cx.emit(gpui::DismissEvent);
-                                        _ = toolbar_for_video_live_click.update(cx, |this: &mut ToolBar, cx| {
-                                            this.menu_hover = MenuPopoverHover::None;
-                                            cx.notify();
-                                        });
+                                        _ = toolbar_for_video_live_click.update(
+                                            cx,
+                                            |this: &mut ToolBar, cx| {
+                                                this.menu_hover = MenuPopoverHover::None;
+                                                cx.notify();
+                                            },
+                                        );
                                     }),
                                 ),
                             )
@@ -380,10 +386,13 @@ impl ToolBar {
                                     cx.listener(move |_, _, window, cx| {
                                         window.push_notification("聊天文件功能开发中...", cx);
                                         cx.emit(gpui::DismissEvent);
-                                        _ = toolbar_for_chat_files_click.update(cx, |this: &mut ToolBar, cx| {
-                                            this.menu_hover = MenuPopoverHover::None;
-                                            cx.notify();
-                                        });
+                                        _ = toolbar_for_chat_files_click.update(
+                                            cx,
+                                            |this: &mut ToolBar, cx| {
+                                                this.menu_hover = MenuPopoverHover::None;
+                                                cx.notify();
+                                            },
+                                        );
                                     }),
                                 ),
                             )
@@ -394,15 +403,15 @@ impl ToolBar {
                                     chat_history_hovered,
                                     set_chat_history_hover,
                                     cx.listener(move |_, _, window, cx| {
-                                        window.push_notification(
-                                            "聊天记录管理功能开发中...",
-                                            cx,
-                                        );
+                                        window.push_notification("聊天记录管理功能开发中...", cx);
                                         cx.emit(gpui::DismissEvent);
-                                        _ = toolbar_for_chat_history_click.update(cx, |this: &mut ToolBar, cx| {
-                                            this.menu_hover = MenuPopoverHover::None;
-                                            cx.notify();
-                                        });
+                                        _ = toolbar_for_chat_history_click.update(
+                                            cx,
+                                            |this: &mut ToolBar, cx| {
+                                                this.menu_hover = MenuPopoverHover::None;
+                                                cx.notify();
+                                            },
+                                        );
                                     }),
                                 ),
                             )
@@ -415,10 +424,13 @@ impl ToolBar {
                                     cx.listener(move |_, _, window, cx| {
                                         window.push_notification("锁定功能开发中...", cx);
                                         cx.emit(gpui::DismissEvent);
-                                        _ = toolbar_for_lock_click.update(cx, |this: &mut ToolBar, cx| {
-                                            this.menu_hover = MenuPopoverHover::None;
-                                            cx.notify();
-                                        });
+                                        _ = toolbar_for_lock_click.update(
+                                            cx,
+                                            |this: &mut ToolBar, cx| {
+                                                this.menu_hover = MenuPopoverHover::None;
+                                                cx.notify();
+                                            },
+                                        );
                                     }),
                                 ),
                             )
@@ -431,10 +443,13 @@ impl ToolBar {
                                     cx.listener(move |_, _, window, cx| {
                                         window.push_notification("意见反馈功能开发中...", cx);
                                         cx.emit(gpui::DismissEvent);
-                                        _ = toolbar_for_feedback_click.update(cx, |this: &mut ToolBar, cx| {
-                                            this.menu_hover = MenuPopoverHover::None;
-                                            cx.notify();
-                                        });
+                                        _ = toolbar_for_feedback_click.update(
+                                            cx,
+                                            |this: &mut ToolBar, cx| {
+                                                this.menu_hover = MenuPopoverHover::None;
+                                                cx.notify();
+                                            },
+                                        );
                                     }),
                                 ),
                             )
@@ -447,10 +462,13 @@ impl ToolBar {
                                     cx.listener(move |_, _, _window, cx| {
                                         crate::app::WeixinApp::open_settings_window(cx);
                                         cx.emit(gpui::DismissEvent);
-                                        _ = toolbar_for_settings_click.update(cx, |this: &mut ToolBar, cx| {
-                                            this.menu_hover = MenuPopoverHover::None;
-                                            cx.notify();
-                                        });
+                                        _ = toolbar_for_settings_click.update(
+                                            cx,
+                                            |this: &mut ToolBar, cx| {
+                                                this.menu_hover = MenuPopoverHover::None;
+                                                cx.notify();
+                                            },
+                                        );
                                     }),
                                 ),
                             )

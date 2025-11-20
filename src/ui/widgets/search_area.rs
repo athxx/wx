@@ -1,5 +1,9 @@
 use gpui::{div, App, InteractiveElement, IntoElement, ParentElement, Styled, WindowControlArea};
-use gpui_component::{h_flex, input::{Input, InputState}, ActiveTheme, Icon, Sizable};
+use gpui_component::{
+    h_flex,
+    input::{Input, InputState},
+    ActiveTheme, Icon, Sizable,
+};
 
 pub fn search_area(search_input: &gpui::Entity<InputState>, cx: &App) -> impl IntoElement {
     let theme = cx.theme();

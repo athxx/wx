@@ -1,16 +1,22 @@
-use crate::app::state::Preferences;
+﻿use crate::app::state::Preferences;
 use crate::ui::theme::{Theme, ThemeMode};
 use crate::ui::widgets::setting_card;
 use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
-    avatar::Avatar,
-    button::Button,
+    button::{Button, ButtonCustomVariant, ButtonVariants as _},
     h_flex,
+    input::{InputEvent, InputState},
     popover::Popover,
     slider::{Slider, SliderEvent, SliderState},
-    v_flex, ActiveTheme, Icon, Selectable, Sizable, WindowExt,
+    v_flex, ActiveTheme, Icon, Sizable, StyledExt as _, WindowExt,
 };
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+pub(crate) const SHORTCUT_INPUT_PLACEHOLDER: &str = "按下快捷键";
+const SHORTCUT_SCREENSHOT_DEFAULT: &str = "Ctrl + Alt + A";
+const SHORTCUT_LOCK_DEFAULT: &str = "Ctrl + Alt + L";
+const SHORTCUT_TOGGLE_DEFAULT: &str = "Ctrl + Alt + W";
 
 pub static SETTINGS_WINDOW_OPEN: AtomicBool = AtomicBool::new(false);
 
@@ -22,14 +28,6 @@ enum SettingsTab {
     Notifications,
     Plugins,
     About,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum FontSize {
-    Small,
-    Standard,
-    Large,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,30 +45,71 @@ enum LanguageHover {
     English,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TranslateLanguageHover {
+    None,
+    SimplifiedChinese,
+    TraditionalChinese,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ShortcutSendHover {
+    None,
+    Enter,
+    CtrlEnter,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum ShortcutInputField {
+    Screenshot,
+    Lock,
+    ToggleWindow,
+}
+
 pub struct SettingsWindow {
     active_tab_ix: usize,
     current_language: String,
-    #[allow(dead_code)]
-    current_font_size: FontSize,
+    root_focus_handle: gpui::FocusHandle,
+
     /// Slider state for controlling global font size.
     font_slider: Entity<SliderState>,
     /// Subscription to listen slider changes and update global font size.
-    #[allow(dead_code)]
-    font_slider_subscription: gpui::Subscription,
+    _font_slider_subscription: gpui::Subscription,
     /// Current font size value used by the slider (in px).
     current_font_size_value: f32,
     _theme_observer: Option<gpui::Subscription>,
     theme_hover: ThemeHover,
     language_hover: LanguageHover,
+    translate_language_selection: String,
+    translate_language_hover: TranslateLanguageHover,
+    auto_download_limit_input: Entity<InputState>,
+    auto_download_input_focused: bool,
+    _auto_download_input_subscription: gpui::Subscription,
+    shortcut_send_selection: String,
+    shortcut_send_hover: ShortcutSendHover,
+    shortcut_screenshot_input: Entity<InputState>,
+    shortcut_lock_input: Entity<InputState>,
+    shortcut_toggle_input: Entity<InputState>,
+    shortcut_display_texts: HashMap<ShortcutInputField, String>,
+    shortcut_input_widths: HashMap<ShortcutInputField, Pixels>,
+    focused_shortcut_input: Option<ShortcutInputField>,
+    _shortcut_input_subscriptions: Vec<gpui::Subscription>,
 }
 
 impl EventEmitter<DismissEvent> for SettingsWindow {}
+
+impl Focusable for SettingsWindow {
+    fn focus_handle(&self, _: &App) -> FocusHandle {
+        self.root_focus_handle.clone()
+    }
+}
 
 impl SettingsWindow {
     pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
         let theme_observer = cx.observe_global::<Theme>(|_this, cx| {
             cx.notify();
         });
+        let root_focus_handle = cx.focus_handle();
 
         // 字体大小 Slider：0..7 共 8 档，根据当前全局字体大小计算初始档位
         let current_font_size: f32 = cx.theme().font_size.into();
@@ -118,21 +157,400 @@ impl SettingsWindow {
                 cx.refresh_windows();
             });
 
-        Self {
+        let auto_download_limit_input = cx.new(|cx| InputState::new(_window, cx).placeholder("20"));
+        auto_download_limit_input.update(cx, |state, cx| {
+            state.set_value("20", _window, cx);
+        });
+        let auto_download_input_subscription = cx.subscribe_in(
+            &auto_download_limit_input,
+            _window,
+            |this, _, event: &InputEvent, _window, cx| {
+                this.handle_auto_download_input_focus(event, cx);
+            },
+        );
+
+        gpui_component::Theme::global_mut(cx).ring = Theme::weixin_colors(cx).input_field_focus;
+
+        let shortcut_screenshot_input =
+            cx.new(|cx| InputState::new(_window, cx).placeholder(SHORTCUT_INPUT_PLACEHOLDER));
+        shortcut_screenshot_input.update(cx, |state, cx| {
+            state.set_value(SHORTCUT_SCREENSHOT_DEFAULT, _window, cx);
+        });
+
+        let shortcut_lock_input =
+            cx.new(|cx| InputState::new(_window, cx).placeholder(SHORTCUT_INPUT_PLACEHOLDER));
+        shortcut_lock_input.update(cx, |state, cx| {
+            state.set_value(SHORTCUT_LOCK_DEFAULT, _window, cx);
+        });
+
+        let shortcut_toggle_input =
+            cx.new(|cx| InputState::new(_window, cx).placeholder(SHORTCUT_INPUT_PLACEHOLDER));
+        shortcut_toggle_input.update(cx, |state, cx| {
+            state.set_value(SHORTCUT_TOGGLE_DEFAULT, _window, cx);
+        });
+
+        let mut shortcut_display_texts = HashMap::new();
+        shortcut_display_texts.insert(
+            ShortcutInputField::Screenshot,
+            SHORTCUT_SCREENSHOT_DEFAULT.to_string(),
+        );
+        shortcut_display_texts.insert(
+            ShortcutInputField::Lock,
+            SHORTCUT_LOCK_DEFAULT.to_string(),
+        );
+        shortcut_display_texts.insert(
+            ShortcutInputField::ToggleWindow,
+            SHORTCUT_TOGGLE_DEFAULT.to_string(),
+        );
+
+        let shortcut_screenshot_subscription = cx.subscribe_in(
+            &shortcut_screenshot_input,
+            _window,
+            |this, _, event: &InputEvent, window, cx| {
+                this.handle_shortcut_input_focus(ShortcutInputField::Screenshot, event, window, cx);
+            },
+        );
+        let shortcut_lock_subscription = cx.subscribe_in(
+            &shortcut_lock_input,
+            _window,
+            |this, _, event: &InputEvent, window, cx| {
+                this.handle_shortcut_input_focus(ShortcutInputField::Lock, event, window, cx);
+            },
+        );
+        let shortcut_toggle_subscription = cx.subscribe_in(
+            &shortcut_toggle_input,
+            _window,
+            |this, _, event: &InputEvent, window, cx| {
+                this.handle_shortcut_input_focus(
+                    ShortcutInputField::ToggleWindow,
+                    event,
+                    window,
+                    cx,
+                );
+            },
+        );
+        let shortcut_input_subscriptions = vec![
+            shortcut_screenshot_subscription,
+            shortcut_lock_subscription,
+            shortcut_toggle_subscription,
+        ];
+
+        let mut this = Self {
             active_tab_ix: 1,
             current_language: "简体中文".to_string(),
-            current_font_size: FontSize::Standard,
+            root_focus_handle,
             font_slider,
-            font_slider_subscription,
+            _font_slider_subscription: font_slider_subscription,
             current_font_size_value: initial_font_size,
             _theme_observer: Some(theme_observer),
             theme_hover: ThemeHover::None,
             language_hover: LanguageHover::None,
-        }
+            translate_language_selection: "简体中文".to_string(),
+            translate_language_hover: TranslateLanguageHover::None,
+            auto_download_limit_input,
+            auto_download_input_focused: false,
+            _auto_download_input_subscription: auto_download_input_subscription,
+            shortcut_send_selection: "Enter".to_string(),
+            shortcut_send_hover: ShortcutSendHover::None,
+            shortcut_screenshot_input,
+            shortcut_lock_input,
+            shortcut_toggle_input,
+            shortcut_display_texts,
+            shortcut_input_widths: HashMap::new(),
+            focused_shortcut_input: None,
+            _shortcut_input_subscriptions: shortcut_input_subscriptions,
+        };
+
+        this.refresh_all_shortcut_input_widths(_window, cx);
+        cx.defer_in(_window, |this, window, cx| {
+            this.refresh_all_shortcut_input_widths(window, cx);
+        });
+        this
     }
 
     pub fn view(window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| Self::new(window, cx))
+    }
+
+    pub(crate) fn auto_download_limit_input(&self) -> &Entity<InputState> {
+        &self.auto_download_limit_input
+    }
+
+    pub(crate) fn blur_focus(&self, window: &mut Window) {
+        self.root_focus_handle.focus(window);
+    }
+
+    pub(crate) fn is_auto_download_input_focused(&self) -> bool {
+        self.auto_download_input_focused
+    }
+
+    pub(crate) fn shortcut_send_selection_label(&self) -> String {
+        self.shortcut_send_selection.clone()
+    }
+
+    pub(crate) fn shortcut_send_hover_state(&self) -> ShortcutSendHover {
+        self.shortcut_send_hover
+    }
+
+    pub(crate) fn translate_language_selection_label(&self) -> String {
+        self.translate_language_selection.clone()
+    }
+
+    pub(crate) fn translate_language_hover_state(&self) -> TranslateLanguageHover {
+        self.translate_language_hover
+    }
+
+    pub(crate) fn set_shortcut_send_hover(&mut self, hover: ShortcutSendHover) {
+        self.shortcut_send_hover = hover;
+    }
+
+    pub(crate) fn clear_shortcut_send_hover(&mut self, hover: ShortcutSendHover) {
+        if self.shortcut_send_hover == hover {
+            self.shortcut_send_hover = ShortcutSendHover::None;
+        }
+    }
+
+    pub(crate) fn set_shortcut_send_selection(&mut self, value: &str) {
+        self.shortcut_send_selection = value.to_string();
+    }
+
+    pub(crate) fn set_translate_language_selection(&mut self, value: &str) {
+        self.translate_language_selection = value.to_string();
+    }
+
+    pub(crate) fn set_translate_language_hover(&mut self, hover: TranslateLanguageHover) {
+        self.translate_language_hover = hover;
+    }
+
+    pub(crate) fn clear_translate_language_hover(&mut self, hover: TranslateLanguageHover) {
+        if self.translate_language_hover == hover {
+            self.translate_language_hover = TranslateLanguageHover::None;
+        }
+    }
+
+    pub(crate) fn shortcut_input_state(&self, field: ShortcutInputField) -> &Entity<InputState> {
+        match field {
+            ShortcutInputField::Screenshot => &self.shortcut_screenshot_input,
+            ShortcutInputField::Lock => &self.shortcut_lock_input,
+            ShortcutInputField::ToggleWindow => &self.shortcut_toggle_input,
+        }
+    }
+
+    pub(crate) fn set_shortcut_field_text(
+        &mut self,
+        field: ShortcutInputField,
+        value: &str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let owned = Self::normalize_shortcut_text(value);
+        self.shortcut_display_texts.insert(field, owned.clone());
+        let state = self.shortcut_input_state(field).clone();
+        let display_text = owned.clone();
+        state.update(cx, |input, cx| {
+            input.set_value(display_text.clone(), window, cx);
+        });
+        if self.refresh_shortcut_input_width(field, window, cx) {
+            cx.notify();
+        }
+    }
+
+    pub(crate) fn reset_shortcut_fields(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.set_shortcut_field_text(
+            ShortcutInputField::Screenshot,
+            SHORTCUT_SCREENSHOT_DEFAULT,
+            window,
+            cx,
+        );
+        self.set_shortcut_field_text(
+            ShortcutInputField::Lock,
+            SHORTCUT_LOCK_DEFAULT,
+            window,
+            cx,
+        );
+        self.set_shortcut_field_text(
+            ShortcutInputField::ToggleWindow,
+            SHORTCUT_TOGGLE_DEFAULT,
+            window,
+            cx,
+        );
+    }
+
+    pub(crate) fn shortcut_input_width(&self, field: ShortcutInputField) -> Pixels {
+        self.shortcut_input_widths
+            .get(&field)
+            .copied()
+            .unwrap_or_else(|| crate::ui::constants::settings_shortcut_input_min_width())
+    }
+
+    pub(crate) fn shortcut_display_text(
+        &self,
+        field: ShortcutInputField,
+        cx: &mut Context<Self>,
+    ) -> String {
+        if self.is_shortcut_input_focused(field) {
+            let live_text = self.read_shortcut_input_text(field, cx);
+            return if live_text.is_empty() {
+                SHORTCUT_INPUT_PLACEHOLDER.to_string()
+            } else {
+                live_text
+            };
+        }
+
+        let text = self
+            .shortcut_display_texts
+            .get(&field)
+            .cloned()
+            .unwrap_or_else(|| self.read_shortcut_input_text(field, cx));
+        if text.is_empty() {
+            SHORTCUT_INPUT_PLACEHOLDER.to_string()
+        } else {
+            text
+        }
+    }
+
+    fn read_shortcut_input_text(
+        &self,
+        field: ShortcutInputField,
+        cx: &mut Context<Self>,
+    ) -> String {
+        let state = self.shortcut_input_state(field).clone();
+        state.read_with(cx, |input, _| input.text().to_string())
+    }
+
+    fn normalize_shortcut_text(text: &str) -> String {
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            String::new()
+        } else {
+            trimmed.split_whitespace().collect::<Vec<_>>().join(" ")
+        }
+    }
+
+    fn commit_shortcut_input_text(
+        &mut self,
+        field: ShortcutInputField,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let raw = self.read_shortcut_input_text(field, cx);
+        let normalized = Self::normalize_shortcut_text(&raw);
+        let current_display = self
+            .shortcut_display_texts
+            .get(&field)
+            .cloned()
+            .unwrap_or_default();
+        let final_text = if normalized.is_empty() {
+            current_display
+        } else {
+            normalized
+        };
+        self.shortcut_display_texts
+            .insert(field, final_text.clone());
+        let state = self.shortcut_input_state(field).clone();
+        state.update(cx, |input, cx| {
+            input.set_value(final_text.clone(), window, cx);
+        });
+        self.refresh_shortcut_input_width(field, window, cx)
+    }
+
+    fn refresh_all_shortcut_input_widths(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let fields = [
+            ShortcutInputField::Screenshot,
+            ShortcutInputField::Lock,
+            ShortcutInputField::ToggleWindow,
+        ];
+        for field in fields {
+            self.refresh_shortcut_input_width(field, window, cx);
+        }
+    }
+
+    fn refresh_shortcut_input_width(
+        &mut self,
+        field: ShortcutInputField,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let width = self.measure_shortcut_input_width(field, window, cx);
+        let changed = self
+            .shortcut_input_widths
+            .get(&field)
+            .map(|current| *current != width)
+            .unwrap_or(true);
+        self.shortcut_input_widths.insert(field, width);
+        changed
+    }
+
+    fn measure_shortcut_input_width(
+        &self,
+        field: ShortcutInputField,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Pixels {
+        let theme = cx.theme();
+        let foreground = theme.foreground;
+        let icon_color = gpui::rgb(0x7b7b7b);
+        let min_width = crate::ui::constants::settings_shortcut_input_min_width();
+        let max_width = crate::ui::constants::settings_shortcut_input_max_width();
+        let display_text = self.shortcut_display_text(field, cx);
+
+        let mut measure_variant = |text: &str, include_icon: bool| {
+            let mut row = h_flex().items_center().gap(px(0.5)).px(px(4.));
+            row = row.child(
+                div()
+                    .pl(px(3.))
+                    .pr(px(1.5))
+                    .whitespace_nowrap()
+                    .text_xs()
+                    .text_color(foreground)
+                    .child(text.to_string()),
+            );
+            if include_icon {
+                row = row.child(
+                    div()
+                        .rounded(crate::ui::constants::radius_sm())
+                        .px(px(6.))
+                        .py(px(2.))
+                        .child(
+                            Icon::default()
+                                .path("setting/close_fill.svg")
+                                .text_color(icon_color),
+                        ),
+                );
+            }
+
+            let mut element = div()
+                .rounded(crate::ui::constants::radius_sm())
+                .border_1()
+                .border_color(gpui::transparent_black())
+                .max_w(max_width)
+                .child(row)
+                .into_any_element();
+            let available_space = size(AvailableSpace::MaxContent, AvailableSpace::MinContent);
+            element.layout_as_root(available_space, window, cx).width
+        };
+
+        let show_icon = display_text != SHORTCUT_INPUT_PLACEHOLDER && display_text != "点击设置";
+
+        let padding_adjustment = px(10.);
+        let mut measured_width =
+            measure_variant(display_text.as_str(), show_icon) + padding_adjustment;
+        let enforce_min_width =
+            display_text != "点击设置" && display_text != SHORTCUT_INPUT_PLACEHOLDER;
+        if enforce_min_width {
+            measured_width = measured_width.max(min_width);
+        }
+        measured_width = measured_width.min(max_width);
+
+        measured_width
+    }
+
+    pub(crate) fn is_shortcut_input_focused(&self, field: ShortcutInputField) -> bool {
+        self.focused_shortcut_input == Some(field)
     }
 
     fn get_active_tab(&self) -> SettingsTab {
@@ -152,352 +570,85 @@ impl SettingsWindow {
         cx.notify();
     }
 
-    fn render_content(&self, window: &mut Window, cx: &mut Context<Self>) -> gpui::AnyElement {
-        match self.get_active_tab() {
-            SettingsTab::AccountAndStorage => {
-                self.render_account_and_storage(cx).into_any_element()
+    fn handle_auto_download_input_focus(&mut self, event: &InputEvent, cx: &mut Context<Self>) {
+        match event {
+            InputEvent::Focus => {
+                if !self.auto_download_input_focused {
+                    self.auto_download_input_focused = true;
+                    cx.notify();
+                }
             }
-            SettingsTab::General => self.render_general_settings(window, cx).into_any_element(),
-            SettingsTab::Shortcuts => self.render_shortcuts(cx).into_any_element(),
-            SettingsTab::Notifications => self.render_notifications(cx).into_any_element(),
-            SettingsTab::Plugins => self.render_plugins(cx).into_any_element(),
-            SettingsTab::About => self.render_about(cx).into_any_element(),
+            InputEvent::Blur => {
+                if self.auto_download_input_focused {
+                    self.auto_download_input_focused = false;
+                    cx.notify();
+                }
+            }
+            _ => {}
         }
     }
 
-    fn render_account_and_storage(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        let foreground = theme.foreground;
-        let muted = theme.muted_foreground;
-
-        // 顶部账号信息 + 自动登录/保留聊天记录卡片
-        let account_card = {
-            let avatar_and_info = h_flex()
-                .items_center()
-                .gap_3()
-                .child(
-                    // 与标题栏 render_user_avatar 中一致的头像风格和尺寸
-                    Avatar::new()
-                        .w(crate::ui::constants::title_avatar_size())
-                        .h(crate::ui::constants::title_avatar_size())
-                        .rounded(crate::ui::constants::radius_md())
-                        .src(crate::ui::avatar::avatar_for_key("self")),
-                )
-                .child(
-                    v_flex()
-                        .gap_1()
-                        .child(div().text_sm().text_color(foreground).child("@@@"))
-                        .child(div().text_xs().text_color(muted).child("H1548772930")),
-                );
-
-            let header_row = h_flex()
-                .items_center()
-                .justify_between()
-                .child(avatar_and_info)
-                .child(
-                    Button::new("settings-account-logout")
-                        .small()
-                        .bg(gpui::rgb(0xEAEAEA))
-                        .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
-                        .child("退出登录"),
-                );
-
-            let auto_login_row = h_flex()
-                .items_center()
-                .justify_between()
-                .py_2()
-                .child(
-                    v_flex()
-                        .gap_1()
-                        .child(div().text_sm().text_color(foreground).child("自动登录"))
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(muted)
-                                .child("在本机登录微信将无需手机确认。"),
-                        ),
-                )
-                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
-
-            let keep_history_row = h_flex()
-                .items_center()
-                .justify_between()
-                .py_2()
-                .child(
-                    v_flex()
-                        .gap_1()
-                        .child(div().text_sm().text_color(foreground).child("保留聊天记录"))
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(muted)
-                                .child("退出登录时保留本机聊天记录。"),
-                        ),
-                )
-                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
-
-            crate::ui::widgets::setting_card::card(
-                cx,
-                v_flex()
-                    .gap_0()
-                    .child(header_row)
-                    .child(crate::ui::widgets::setting_card::divider(cx))
-                    .child(auto_login_row)
-                    .child(crate::ui::widgets::setting_card::divider(cx))
-                    .child(keep_history_row),
-            )
-        };
-
-        // 存储空间 + 存储位置 + 自动下载 + 清空聊天记录卡片
-        let storage_card = {
-            let storage_space_row = h_flex()
-                .items_center()
-                .justify_between()
-                .py_4()
-                .child(div().text_sm().text_color(foreground).child("存储空间"))
-                .child(
-                    Button::new("settings-storage-manage")
-                        .small()
-                        .bg(gpui::rgb(0xEAEAEA))
-                        .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
-                        .child("管理"),
-                );
-
-            let path_row = v_flex()
-                .gap_1()
-                .py_4()
-                .child(div().text_sm().text_color(foreground).child("存储位置"))
-                .child(
-                    h_flex()
-                        .items_center()
-                        .justify_between()
-                        .child(div().text_xs().text_color(muted).child("D\\wxwechat_files"))
-                        .child(
-                            Button::new("settings-storage-change")
-                                .small()
-                                .bg(gpui::rgb(0xEAEAEA))
-                                .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
-                                .child("更改"),
-                        ),
-                );
-
-            let auto_download_row = h_flex()
-                .items_center()
-                .justify_between()
-                .py_4()
-                .child(
-                    h_flex()
-                        .items_center()
-                        .gap_2()
-                        .child(div().text_sm().text_color(foreground).child("自动下载小于"))
-                        .child(
-                            div()
-                                .w(px(40.))
-                                .h(px(24.))
-                                .rounded(crate::ui::constants::radius_sm())
-                                .bg(theme.secondary)
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(div().text_sm().text_color(foreground).child("20")),
-                        )
-                        .child(div().text_sm().text_color(foreground).child("MB的文件")),
-                )
-                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
-
-            let clear_button_row = h_flex().justify_end().py_4().child(
-                Button::new("settings-clear-messages")
-                    .small()
-                    .bg(gpui::rgb(0xEAEAEA))
-                    .hover(|s| s.bg(gpui::rgb(0xE4E4E4)))
-                    .label("清空全部聊天记录"),
-            );
-
-            crate::ui::widgets::setting_card::card(
-                cx,
-                v_flex()
-                    .gap_0()
-                    .child(storage_space_row)
-                    .child(crate::ui::widgets::setting_card::divider(cx))
-                    .child(path_row)
-                    .child(crate::ui::widgets::setting_card::divider(cx))
-                    .child(auto_download_row)
-                    .child(crate::ui::widgets::setting_card::divider(cx))
-                    .child(clear_button_row),
-            )
-        };
-
-        v_flex().gap_6().child(account_card).child(storage_card)
-    }
-
-    fn render_general_settings(
-        &self,
+    fn handle_shortcut_input_focus(
+        &mut self,
+        field: ShortcutInputField,
+        event: &InputEvent,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let theme_mode = cx.theme().mode;
-        let theme = cx.theme();
-        let foreground = theme.foreground;
-
-        let language_row = {
-            let label = div().text_sm().text_color(foreground).child("语言");
-            let btn = self.render_language_button(window, cx);
-            h_flex()
-                .items_center()
-                .justify_between()
-                .py_2()
-                .child(label)
-                .child(btn)
-        };
-
-        let appearance_card_content = {
-            let theme_row = self.render_theme_setting(theme_mode, window, cx);
-            let font_row = {
-                let label = div().text_sm().text_color(foreground).child("字体大小");
-                let slider = self.render_font_size_slider(window, cx);
-                h_flex()
-                    .items_center()
-                    .py_2()
-                    .child(label)
-                    .child(h_flex().flex_1().justify_end().child(slider))
-            };
-            v_flex()
-                .gap_0()
-                .child(theme_row)
-                .child(setting_card::divider(cx))
-                .child(font_row)
-        };
-
-        v_flex()
-            .gap_6()
-            .child(setting_card::card(cx, language_row))
-            .child(setting_card::card(cx, appearance_card_content))
+    ) {
+        let state = self.shortcut_input_state(field).clone();
+        match event {
+            InputEvent::Focus => {
+                let mut should_notify = false;
+                if self.focused_shortcut_input != Some(field) {
+                    self.focused_shortcut_input = Some(field);
+                    should_notify = true;
+                }
+                state.update(cx, |input, cx| {
+                    input.set_value("", window, cx);
+                });
+                if self.refresh_shortcut_input_width(field, window, cx) {
+                    should_notify = true;
+                }
+                if should_notify {
+                    cx.notify();
+                }
+            }
+            InputEvent::Blur => {
+                let mut should_notify = false;
+                if self.focused_shortcut_input == Some(field) {
+                    self.focused_shortcut_input = None;
+                    should_notify = true;
+                }
+                if self.commit_shortcut_input_text(field, window, cx) {
+                    should_notify = true;
+                }
+                if should_notify {
+                    cx.notify();
+                }
+            }
+            InputEvent::PressEnter { .. } => {
+                if self.commit_shortcut_input_text(field, window, cx) {
+                    cx.notify();
+                }
+            }
+            _ => {}
+        }
     }
 
-    fn render_shortcuts(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-
-        v_flex()
-            .gap_6()
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.foreground)
-                    .child("快捷键"),
-            )
-            .child(
-                v_flex()
-                    .gap_3()
-                    .child(self.render_shortcut_item("打开微信", "Ctrl + Alt + W", cx))
-                    .child(self.render_shortcut_item("关闭窗口", "Esc", cx))
-                    .child(self.render_shortcut_item("搜索", "Ctrl + F", cx))
-                    .child(self.render_shortcut_item("发送消息", "Enter", cx))
-                    .child(self.render_shortcut_item("换行", "Shift + Enter", cx)),
-            )
+    fn render_content(&self, window: &mut Window, cx: &mut Context<Self>) -> gpui::AnyElement {
+        match self.get_active_tab() {
+            SettingsTab::AccountAndStorage => {
+                self.render_account_and_storage_tab(cx).into_any_element()
+            }
+            SettingsTab::General => self.render_general_tab(window, cx).into_any_element(),
+            SettingsTab::Shortcuts => self.render_shortcuts_tab(window, cx).into_any_element(),
+            SettingsTab::Notifications => self.render_notifications_tab(cx).into_any_element(),
+            SettingsTab::Plugins => self.render_plugins_tab(cx).into_any_element(),
+            SettingsTab::About => self.render_about_tab(cx).into_any_element(),
+        }
     }
 
-    fn render_notifications(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-
-        v_flex()
-            .gap_6()
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.foreground)
-                    .child("通知"),
-            )
-            .child(
-                v_flex()
-                    .gap_4()
-                    .child(self.render_setting_row("声音提醒", true, cx))
-                    .child(self.render_setting_row("桌面通知", true, cx))
-                    .child(self.render_setting_row("显示消息详情", false, cx))
-                    .child(self.render_setting_row("通知免打扰", false, cx)),
-            )
-    }
-
-    fn render_plugins(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-
-        v_flex()
-            .gap_6()
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.foreground)
-                    .child("插件"),
-            )
-            .child(
-                v_flex().gap_3().child(
-                    div()
-                        .text_sm()
-                        .text_color(theme.muted_foreground)
-                        .child("暂无可用插件"),
-                ),
-            )
-    }
-
-    fn render_about(&self, cx: &Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
-        let weixin_colors = Theme::weixin_colors(cx);
-
-        v_flex()
-            .gap_6()
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                    .text_color(theme.foreground)
-                    .child("关于微信"),
-            )
-            .child(
-                v_flex()
-                    .gap_4()
-                    .items_center()
-                    .child(
-                        div()
-                            .w(crate::ui::constants::about_logo_size())
-                            .h(crate::ui::constants::about_logo_size())
-                            .rounded(crate::ui::constants::radius_lg())
-                            .bg(weixin_colors.weixin_green)
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .child(
-                                div()
-                                    .text_2xl()
-                                    .font_weight(gpui::FontWeight::BOLD)
-                                    .text_color(theme.primary_foreground)
-                                    .child("微"),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .text_base()
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(theme.foreground)
-                            .child("微信 for Windows"),
-                    )
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(theme.muted_foreground)
-                            .child("版本 3.9.10"),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme.muted_foreground)
-                            .child("© 2011-2025 Tencent. All Rights Reserved."),
-                    ),
-            )
-    }
-
-    fn render_theme_setting(
+    pub(crate) fn render_theme_setting(
         &self,
         current_mode: ThemeMode,
         window: &mut Window,
@@ -506,32 +657,42 @@ impl SettingsWindow {
         let theme = cx.theme();
         let foreground = theme.foreground;
 
-        h_flex()
-            .items_center()
-            .justify_between()
+        setting_card::row()
             .py_2()
             .child(div().text_sm().text_color(foreground).child("外观"))
             .child(self.render_theme_button(current_mode, window, cx))
     }
 
     /// 通用设置中的下拉按钮触发器（语言 / 主题 / 字体），统一使用同一风格。
-    fn general_select_trigger_button(
+    pub(crate) fn general_select_trigger_button(
         id: &'static str,
         label: String,
         cx: &mut Context<Self>,
     ) -> Button {
         let weixin_colors = Theme::weixin_colors(cx);
+        let foreground = cx.theme().foreground;
+
+        // 亮色：白底 + 边框，hover f2f2f2 / border ebebeb
+        // 深色：沿用微信深色布局的搜索/hover/选中颜色
+        let (bg, hover, active, border) = Theme::general_select_button_colors(cx);
+
+        let variant = ButtonCustomVariant::new(cx)
+            .color(bg)
+            .foreground(foreground)
+            .border(border)
+            .hover(hover)
+            .active(active);
 
         Button::new(id)
-            .selected(false)
             .xsmall()
-            .outline()
             .h(px(26.))
             .w(px(90.))
+            .custom(variant)
             .child(
                 h_flex()
                     .items_center()
                     .gap_2()
+                    .text_color(foreground)
                     .text_size(px(11.))
                     .child(label)
                     .child(
@@ -668,7 +829,7 @@ impl SettingsWindow {
         Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
     }
 
-    fn render_static_select_item<FSet, L>(
+    pub(crate) fn render_static_select_item<FSet, L>(
         id: &'static str,
         label: &'static str,
         hovered: bool,
@@ -688,7 +849,7 @@ impl SettingsWindow {
         )
     }
 
-    fn render_setting_row(
+    pub(crate) fn render_setting_row(
         &self,
         label: &'static str,
         enabled: bool,
@@ -696,40 +857,10 @@ impl SettingsWindow {
     ) -> impl IntoElement {
         let theme = cx.theme();
 
-        h_flex()
-            .items_center()
-            .justify_between()
+        setting_card::row()
             .py_2()
             .child(div().text_sm().text_color(theme.foreground).child(label))
-            .child(crate::ui::widgets::toggle::toggle(cx, enabled))
-    }
-
-    fn render_shortcut_item(
-        &self,
-        label: &'static str,
-        shortcut: &'static str,
-        cx: &Context<Self>,
-    ) -> impl IntoElement {
-        let theme = cx.theme();
-
-        h_flex()
-            .items_center()
-            .justify_between()
-            .py_2()
-            .child(div().text_sm().text_color(theme.foreground).child(label))
-            .child(
-                div()
-                    .px_3()
-                    .py_1()
-                    .rounded(crate::ui::constants::radius_sm())
-                    .bg(theme.muted)
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(theme.muted_foreground)
-                            .child(shortcut),
-                    ),
-            )
+            .child(crate::ui::widgets::toggle::toggle_small(cx, enabled))
     }
 
     fn render_static_language_item<FSet, L>(
@@ -746,22 +877,7 @@ impl SettingsWindow {
         Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
     }
 
-    #[allow(dead_code)]
-    fn render_static_font_item<FSet, L>(
-        id: &'static str,
-        label: &'static str,
-        hovered: bool,
-        set_hover: FSet,
-        on_mouse_down: L,
-    ) -> impl IntoElement
-    where
-        FSet: Fn(bool, &mut App) + Clone + 'static,
-        L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
-    {
-        Self::render_static_select_item(id, label, hovered, set_hover, on_mouse_down)
-    }
-
-    fn render_language_button(
+    pub(crate) fn render_language_button(
         &self,
         _window: &mut Window,
         cx: &mut Context<Self>,
@@ -894,7 +1010,125 @@ impl SettingsWindow {
             })
     }
 
-    fn render_font_size_slider(
+    pub(crate) fn render_translate_language_button(
+        &self,
+        _window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let label = self.translate_language_selection_label();
+        let settings = cx.entity();
+
+        Popover::new("translate-language-popover")
+            .appearance(false)
+            .anchor(gpui::Corner::BottomRight)
+            .trigger(Self::general_select_trigger_button(
+                "translate-language-btn",
+                label,
+                cx,
+            ))
+            .content(move |_, _window, cx| {
+                let theme = cx.theme();
+
+                let hover_state = settings.read(cx).translate_language_hover_state();
+                let simplified_hovered =
+                    matches!(hover_state, TranslateLanguageHover::SimplifiedChinese);
+                let traditional_hovered =
+                    matches!(hover_state, TranslateLanguageHover::TraditionalChinese);
+
+                let settings_for_simplified_hover = settings.clone();
+                let set_simplified_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_simplified_hover.update(
+                        cx,
+                        |this: &mut SettingsWindow, cx| {
+                            if is_hovering {
+                                this.set_translate_language_hover(
+                                    TranslateLanguageHover::SimplifiedChinese,
+                                );
+                            } else {
+                                this.clear_translate_language_hover(
+                                    TranslateLanguageHover::SimplifiedChinese,
+                                );
+                            }
+                            cx.notify();
+                        },
+                    );
+                };
+
+                let settings_for_traditional_hover = settings.clone();
+                let set_traditional_hover = move |is_hovering: bool, cx: &mut App| {
+                    _ = settings_for_traditional_hover.update(
+                        cx,
+                        |this: &mut SettingsWindow, cx| {
+                            if is_hovering {
+                                this.set_translate_language_hover(
+                                    TranslateLanguageHover::TraditionalChinese,
+                                );
+                            } else {
+                                this.clear_translate_language_hover(
+                                    TranslateLanguageHover::TraditionalChinese,
+                                );
+                            }
+                            cx.notify();
+                        },
+                    );
+                };
+
+                let settings_for_simplified_click = settings.clone();
+                let simplified_click = cx.listener(move |_, _, _window, cx| {
+                    _ = settings_for_simplified_click.update(
+                        cx,
+                        |this: &mut SettingsWindow, cx| {
+                            this.set_translate_language_selection("简体中文");
+                            this.clear_translate_language_hover(
+                                TranslateLanguageHover::SimplifiedChinese,
+                            );
+                            cx.notify();
+                        },
+                    );
+                    cx.emit(gpui::DismissEvent);
+                });
+
+                let settings_for_traditional_click = settings.clone();
+                let traditional_click = cx.listener(move |_, _, _window, cx| {
+                    _ = settings_for_traditional_click.update(
+                        cx,
+                        |this: &mut SettingsWindow, cx| {
+                            this.set_translate_language_selection("繁体中文");
+                            this.clear_translate_language_hover(
+                                TranslateLanguageHover::TraditionalChinese,
+                            );
+                            cx.notify();
+                        },
+                    );
+                    cx.emit(gpui::DismissEvent);
+                });
+
+                v_flex()
+                    .w(crate::ui::constants::popover_width_sm())
+                    .gap_0()
+                    .py_2()
+                    .bg(theme.popover)
+                    .p_1()
+                    .rounded(crate::ui::constants::radius_md())
+                    .shadow_md()
+                    .child(Self::render_static_language_item(
+                        "translate-language-simplified",
+                        "简体中文",
+                        simplified_hovered,
+                        set_simplified_hover,
+                        simplified_click,
+                    ))
+                    .child(Self::render_static_language_item(
+                        "translate-language-traditional",
+                        "繁体中文",
+                        traditional_hovered,
+                        set_traditional_hover,
+                        traditional_click,
+                    ))
+            })
+    }
+
+    pub(crate) fn render_font_size_slider(
         &self,
         _window: &mut Window,
         cx: &mut Context<Self>,
@@ -984,7 +1218,7 @@ impl SettingsWindow {
             .id(tab_id)
             .w_full()
             .px_4()
-            .py_3()
+            .py_2()
             .cursor_pointer()
             .rounded(crate::ui::constants::radius_sm())
             .bg(if is_active { active_bg } else { transparent_bg })
@@ -1017,6 +1251,12 @@ impl Render for SettingsWindow {
 
         h_flex()
             .size_full()
+            .child(
+                div()
+                    .w(px(0.))
+                    .h(px(0.))
+                    .track_focus(&self.root_focus_handle),
+            )
             .child(
                 v_flex()
                     .w(crate::ui::constants::settings_sidebar_width())
@@ -1084,12 +1324,18 @@ impl Render for SettingsWindow {
                             ),
                     )
                     .child(
-                        v_flex()
+                        div()
                             .flex_1()
                             .w_full()
-                            .p_6()
-                            .overflow_hidden()
-                            .child(self.render_content(window, cx)),
+                            .h(crate::ui::constants::settings_window_content_height())
+                            .relative()
+                            .child(
+                                v_flex()
+                                    .size_full()
+                                    .scrollable(Axis::Vertical)
+                                    .p_6()
+                                    .child(self.render_content(window, cx)),
+                            ),
                     ),
             )
     }
