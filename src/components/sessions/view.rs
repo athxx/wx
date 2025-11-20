@@ -129,11 +129,7 @@ impl SessionList {
 
                 cx.notify();
             }))
-            .child(crate::ui::widgets::session_row::session_row_content(
-                contact,
-                &theme,
-                &weixin_colors,
-            ))
+            .child(crate::ui::composites::session_row::SessionRow::new(contact.clone()))
     }
 }
 

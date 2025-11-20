@@ -4,6 +4,7 @@ pub mod components;
 mod infra;
 mod models;
 mod ui;
+mod utils;
 
 use assets::Assets;
 use gpui::Application;

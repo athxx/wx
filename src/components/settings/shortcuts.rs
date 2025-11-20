@@ -1,14 +1,12 @@
-﻿use crate::ui::theme::Theme;
-use crate::ui::widgets::{setting_card, settings_button};
+use crate::ui::theme::Theme;
+use crate::ui::composites::setting_card;
 use gpui::{
     div, px, App, Context, InteractiveElement, IntoElement, MouseButton, MouseDownEvent,
     ParentElement, Styled, Window,
 };
 use gpui_component::{h_flex, input::Input, popover::Popover, v_flex, ActiveTheme, Icon, Sizable};
 
-use super::window::{
-    ShortcutInputField, ShortcutSendHover, SHORTCUT_INPUT_PLACEHOLDER,
-};
+use super::window::{ShortcutInputField, ShortcutSendHover, SHORTCUT_INPUT_PLACEHOLDER};
 use super::SettingsWindow;
 
 impl SettingsWindow {
@@ -20,13 +18,13 @@ impl SettingsWindow {
         let theme = cx.theme();
         let foreground = theme.foreground;
 
-        let send_row = setting_card::row()
+        let send_row = setting_card::setting_row()
             .py_3()
             .child(div().text_sm().text_color(foreground).child("发送消息"))
             .child(self.render_shortcut_send_selector(cx));
 
         let mut shortcuts_content = v_flex().gap_0().child(send_row);
-        shortcuts_content = shortcuts_content.child(setting_card::divider(cx));
+        shortcuts_content = shortcuts_content.child(setting_card::SettingDivider::new());
 
         let action_rows = [
             ("截图", ShortcutInputField::Screenshot),
@@ -38,29 +36,25 @@ impl SettingsWindow {
             let row = self.shortcut_input_row(*label, *field, window, cx);
             shortcuts_content = shortcuts_content.child(row);
             if index < action_rows.len() - 1 {
-                shortcuts_content = shortcuts_content.child(setting_card::divider(cx));
+                shortcuts_content = shortcuts_content.child(setting_card::SettingDivider::new());
             }
         }
 
         let reset_listener = cx.listener(|this: &mut SettingsWindow, _evt, window, cx| {
             this.reset_shortcut_fields(window, cx);
         });
-        let reset_row = h_flex()
-            .justify_end()
-            .py_3()
-            .px_4()
-            .child(
-                settings_button::settings_button(cx, "shortcut-reset")
-                    .label("恢复默认设置")
-                    .on_click(reset_listener),
-            );
+        let reset_row = h_flex().justify_end().py_3().px_4().child(
+            crate::ui::base::settings_button::SettingsButton::new("shortcut-reset")
+                .label("恢复默认设置")
+                .on_click(reset_listener),
+        );
 
-        shortcuts_content = shortcuts_content.child(setting_card::divider(cx));
+        shortcuts_content = shortcuts_content.child(setting_card::SettingDivider::new());
         shortcuts_content = shortcuts_content.child(reset_row);
 
         v_flex()
             .gap_6()
-            .child(setting_card::card(cx, shortcuts_content))
+            .child(setting_card::SettingCard::new(shortcuts_content))
     }
 }
 
@@ -188,11 +182,10 @@ impl SettingsWindow {
         let icon_listener = cx.listener(move |this: &mut SettingsWindow, _, window, cx| {
             this.set_shortcut_field_text(icon_field, "点击设置", window, cx);
         });
-        let show_icon = !is_focused
-            && display_text != SHORTCUT_INPUT_PLACEHOLDER
-            && display_text != "点击设置";
+        let show_icon =
+            !is_focused && display_text != SHORTCUT_INPUT_PLACEHOLDER && display_text != "点击设置";
 
-        setting_card::row()
+        setting_card::setting_row()
             .py_3()
             .child(div().text_sm().text_color(foreground).child(label))
             .child(
@@ -205,8 +198,7 @@ impl SettingsWindow {
                         .bg(input_bg)
                         .on_mouse_down_out(blur_listener)
                         .child({
-                            let mut row =
-                                h_flex().items_center().gap(px(0.5)).px(px(4.));
+                            let mut row = h_flex().items_center().gap(px(0.5)).px(px(4.));
                             row = row.child(
                                 Input::new(&input_state)
                                     .xsmall()
@@ -223,15 +215,10 @@ impl SettingsWindow {
                                 row = row.child(
                                     div()
                                         .cursor_pointer()
-                                        .rounded(
-                                            crate::ui::constants::radius_sm(),
-                                        )
+                                        .rounded(crate::ui::constants::radius_sm())
                                         .px(px(6.))
                                         .py(px(2.))
-                                        .on_mouse_down(
-                                            MouseButton::Left,
-                                            icon_listener,
-                                        )
+                                        .on_mouse_down(MouseButton::Left, icon_listener)
                                         .child(
                                             Icon::default()
                                                 .path("setting/close_fill.svg")

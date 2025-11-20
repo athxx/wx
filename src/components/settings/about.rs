@@ -1,4 +1,4 @@
-use crate::ui::widgets::setting_card;
+use crate::ui::composites::setting_card;
 use gpui::{div, px, IntoElement, ParentElement, Styled};
 use gpui_component::{h_flex, v_flex, ActiveTheme};
 
@@ -8,8 +8,7 @@ impl SettingsWindow {
     pub(crate) fn render_about_tab(&self, cx: &gpui::Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
 
-        let version_row = setting_card::card(
-            cx,
+        let version_row = setting_card::SettingCard::new(
             h_flex()
                 .w_full()
                 .items_center()
@@ -23,13 +22,12 @@ impl SettingsWindow {
                         .child(div().text_xs().text_color(theme.muted_foreground).child("4.1.2.17")),
                 )
                 .child(
-                    crate::ui::widgets::settings_button::settings_button(cx, "about-check-update")
+                    crate::ui::base::settings_button::SettingsButton::new("about-check-update")
                         .label("检查更新"),
                 ),
         );
 
-        let help_row = setting_card::card(
-            cx,
+        let help_row = setting_card::SettingCard::new(
             h_flex()
                 .w_full()
                 .items_center()
@@ -38,7 +36,7 @@ impl SettingsWindow {
                 .py_3()
                 .child(div().text_sm().text_color(theme.foreground).child("微信帮助"))
                 .child(
-                    crate::ui::widgets::settings_button::settings_button(cx, "about-view-help")
+                    crate::ui::base::settings_button::SettingsButton::new("about-view-help")
                         .label("查看帮助"),
                 ),
         );

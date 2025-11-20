@@ -76,7 +76,7 @@ impl SettingsWindow {
                                 ),
                         )
                         .child(
-                            crate::ui::widgets::settings_button::settings_button(cx, id)
+                            crate::ui::base::settings_button::SettingsButton::new(id)
                                 .label("下载"),
                         ),
                 )

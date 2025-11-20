@@ -2,7 +2,7 @@ use gpui::{px, Pixels};
 use gpui_component::PixelsExt;
 
 pub fn toolbar_width() -> Pixels {
-    px(67.)
+    px(60.)
 }
 pub fn title_bar_height() -> Pixels {
     px(67.)
@@ -124,10 +124,6 @@ pub fn hairline() -> Pixels {
     px(0.7)
 }
 
-pub fn about_logo_size() -> Pixels {
-    px(80.)
-}
-
 pub fn icon_badge_padding_xs() -> Pixels {
     px(1.5)
 }
@@ -150,26 +146,6 @@ pub fn settings_window_content_height() -> Pixels {
     let total = settings_window_height().as_f32();
     let header = settings_title_height().as_f32();
     px(total - header)
-}
-
-// Toggle tokens
-pub fn toggle_width() -> Pixels {
-    px(40.)
-}
-pub fn toggle_height() -> Pixels {
-    px(20.)
-}
-pub fn toggle_radius() -> Pixels {
-    px(10.)
-}
-pub fn toggle_handle_size() -> Pixels {
-    px(16.)
-}
-pub fn toggle_handle_radius() -> Pixels {
-    px(8.)
-}
-pub fn toggle_padding_x() -> Pixels {
-    px(2.)
 }
 
 pub fn settings_small_input_width() -> Pixels {

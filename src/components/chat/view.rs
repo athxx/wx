@@ -1,24 +1,22 @@
 use gpui::{
-    div, px, size, AnyElement, App, AppContext, AvailableSpace, Context, Entity, EventEmitter,
+    div, px, size, App, AppContext, AvailableSpace, Context, Entity, EventEmitter,
     InteractiveElement, IntoElement, ParentElement, Pixels, Render, Styled, Window,
     WindowControlArea,
 };
 use gpui_component::{
-    button::{Button, ButtonVariants},
     h_flex,
-    input::{Input, InputState},
     scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
     v_flex, v_virtual_list, ActiveTheme, Icon, VirtualListScrollHandle,
 };
 use std::rc::Rc;
 
+use crate::components::chat::input::{ChatInput, ChatInputEvent};
 use crate::models::{ChatSession, Message};
 use crate::ui::theme::Theme;
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
-    input_state: Entity<InputState>,
-    on_send_message: Option<Box<dyn Fn(String) + 'static>>,
+    chat_input: Entity<ChatInput>,
     /// 当前输入区域高度（下方输入框整体区域）。
     current_input_height: Pixels,
     /// 输入区域最小/最大高度，用于约束拖动。
@@ -36,6 +34,7 @@ pub struct ChatArea {
 #[derive(Clone, Debug)]
 pub enum ChatAreaEvent {
     InputResized,
+    SendMessage(String),
 }
 
 impl EventEmitter<ChatAreaEvent> for ChatArea {}
@@ -44,12 +43,18 @@ impl ChatArea {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let default_input_height = crate::ui::constants::chat_input_default_height();
 
-        let input_state = cx.new(|cx| InputState::new(window, cx).auto_grow(1, 1));
+        let chat_input = cx.new(|cx| ChatInput::new(window, cx));
+
+        cx.subscribe(&chat_input, |_, _, ev: &ChatInputEvent, cx| match ev {
+            ChatInputEvent::SendMessage(content) => {
+                cx.emit(ChatAreaEvent::SendMessage(content.clone()));
+            }
+        })
+        .detach();
 
         Self {
             current_session: None,
-            input_state,
-            on_send_message: None,
+            chat_input,
             current_input_height: default_input_height,
             min_input_height: crate::ui::constants::chat_input_min_height(),
             max_input_height: crate::ui::constants::chat_input_max_height(),
@@ -70,70 +75,11 @@ impl ChatArea {
         cx.notify();
     }
 
-    pub fn on_send_message<F>(mut self, callback: F) -> Self
-    where
-        F: Fn(String) + 'static,
-    {
-        self.on_send_message = Some(Box::new(callback));
-        self
-    }
-
     pub fn add_message(&mut self, message: Message, cx: &mut Context<Self>) {
         if let Some(session) = &mut self.current_session {
             session.add_message(message);
             cx.notify();
         }
-    }
-
-    fn send_message(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let content = self.input_state.read(cx).value();
-        if content.trim().is_empty() {
-            return;
-        }
-
-        if let Some(callback) = &self.on_send_message {
-            callback(content.to_string());
-        }
-
-        // 清空输入框
-        self.input_state.update(cx, |state, cx| {
-            state.set_value("", window, cx);
-        });
-    }
-
-    fn render_input_area(&self, cx: &mut Context<Self>) -> AnyElement {
-        let theme = cx.theme();
-
-        v_flex()
-            .size_full()
-            .child(
-                div()
-                    .w_full()
-                    .px_3()
-                    .py_1p5()
-                    .child(crate::ui::widgets::chat_toolbar::chat_toolbar(theme)),
-            )
-            .child(
-                div().flex_1().w_full().px_2().overflow_hidden().child(
-                    Input::new(&self.input_state)
-                        .text_sm()
-                        .appearance(false)
-                        .w_full()
-                        .h_full(),
-                ),
-            )
-            .child(
-                div().w_full().flex().justify_end().px_2().pb_2().child(
-                    Button::new("send")
-                        .child(h_flex().text_sm().items_center().child("发送(S)"))
-                        .w_24()
-                        .success()
-                        .on_click(cx.listener(|this, _, window, cx| {
-                            this.send_message(window, cx);
-                        })),
-                ),
-            )
-            .into_any_element()
     }
 }
 
@@ -235,12 +181,9 @@ impl Render for ChatArea {
                     .messages
                     .iter()
                     .map(|msg| {
-                        let bubble = crate::ui::widgets::message_bubble::message_bubble(
-                            msg,
-                            is_group,
-                            &theme,
-                            &weixin_colors,
-                        );
+                        let bubble =
+                            crate::ui::composites::message_bubble::MessageBubble::new(msg.clone())
+                                .group(is_group);
                         let mut el = div().w_full().child(bubble).into_any_element();
                         let bubble_size = el.layout_as_root(available_space, window, cx);
                         // 为了避免底部消息被裁剪，给每一项略微增加 4px 高度作为安全边距。
@@ -262,12 +205,10 @@ impl Render for ChatArea {
                         .map(|ix| {
                             // 这里直接复用原来的气泡布局，不再手动设置高度，
                             // 高度由 VirtualList 根据预先测量的 item_sizes 控制。
-                            crate::ui::widgets::message_bubble::message_bubble(
-                                &session.messages[ix],
-                                is_group,
-                                cx.theme(),
-                                &Theme::weixin_colors(cx),
+                            crate::ui::composites::message_bubble::MessageBubble::new(
+                                session.messages[ix].clone(),
                             )
+                            .group(is_group)
                         })
                         .collect()
                 },
@@ -349,7 +290,7 @@ impl Render for ChatArea {
                     .h(self.current_input_height)
                     .w_full()
                     .bg(bg_color)
-                    .child(self.render_input_area(cx)),
+                    .child(self.chat_input.clone()),
             )
     }
 }

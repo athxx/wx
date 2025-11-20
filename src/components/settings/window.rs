@@ -1,6 +1,6 @@
-﻿use crate::app::state::Preferences;
+use crate::app::state::Preferences;
 use crate::ui::theme::{Theme, ThemeMode};
-use crate::ui::widgets::setting_card;
+use crate::ui::composites::setting_card;
 use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
@@ -8,7 +8,8 @@ use gpui_component::{
     input::{InputEvent, InputState},
     popover::Popover,
     slider::{Slider, SliderEvent, SliderState},
-    v_flex, ActiveTheme, Icon, Sizable, StyledExt as _, WindowExt,
+    switch::Switch,
+    v_flex, ActiveTheme, Icon, Sizable, StyledExt as _, WindowExt, Size
 };
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -194,10 +195,7 @@ impl SettingsWindow {
             ShortcutInputField::Screenshot,
             SHORTCUT_SCREENSHOT_DEFAULT.to_string(),
         );
-        shortcut_display_texts.insert(
-            ShortcutInputField::Lock,
-            SHORTCUT_LOCK_DEFAULT.to_string(),
-        );
+        shortcut_display_texts.insert(ShortcutInputField::Lock, SHORTCUT_LOCK_DEFAULT.to_string());
         shortcut_display_texts.insert(
             ShortcutInputField::ToggleWindow,
             SHORTCUT_TOGGLE_DEFAULT.to_string(),
@@ -355,23 +353,14 @@ impl SettingsWindow {
         }
     }
 
-    pub(crate) fn reset_shortcut_fields(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub(crate) fn reset_shortcut_fields(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.set_shortcut_field_text(
             ShortcutInputField::Screenshot,
             SHORTCUT_SCREENSHOT_DEFAULT,
             window,
             cx,
         );
-        self.set_shortcut_field_text(
-            ShortcutInputField::Lock,
-            SHORTCUT_LOCK_DEFAULT,
-            window,
-            cx,
-        );
+        self.set_shortcut_field_text(ShortcutInputField::Lock, SHORTCUT_LOCK_DEFAULT, window, cx);
         self.set_shortcut_field_text(
             ShortcutInputField::ToggleWindow,
             SHORTCUT_TOGGLE_DEFAULT,
@@ -657,7 +646,7 @@ impl SettingsWindow {
         let theme = cx.theme();
         let foreground = theme.foreground;
 
-        setting_card::row()
+        setting_card::setting_row()
             .py_2()
             .child(div().text_sm().text_color(foreground).child("外观"))
             .child(self.render_theme_button(current_mode, window, cx))
@@ -840,13 +829,11 @@ impl SettingsWindow {
         FSet: Fn(bool, &mut App) + Clone + 'static,
         L: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
     {
-        crate::ui::widgets::toolbar::hover_menu_item::hover_menu_item_compact(
-            id,
-            label,
-            hovered,
-            set_hover,
-            on_mouse_down,
-        )
+        crate::ui::base::menu_item::MenuItem::new(id, label)
+            .hovered(hovered)
+            .compact(true)
+            .on_hover(set_hover)
+            .on_click(on_mouse_down)
     }
 
     pub(crate) fn render_setting_row(
@@ -857,10 +844,14 @@ impl SettingsWindow {
     ) -> impl IntoElement {
         let theme = cx.theme();
 
-        setting_card::row()
+        setting_card::setting_row()
             .py_2()
             .child(div().text_sm().text_color(theme.foreground).child(label))
-            .child(crate::ui::widgets::toggle::toggle_small(cx, enabled))
+            .child(
+                Switch::new(label)
+                    .checked(enabled)
+                    .with_size(Size::Small),
+            )
     }
 
     fn render_static_language_item<FSet, L>(

@@ -4,8 +4,8 @@ use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
 use crate::ui::fixed_resizable::{FixedResizableEvent, FixedResizableState};
 use crate::ui::theme::{Theme, ThemeMode};
-use gpui::{px, App, AppContext, Context, Entity, Window};
-use gpui_component::ActiveTheme;
+use gpui::{px, App, AppContext, Context, Entity, FocusHandle, Focusable, Window};
+use gpui_component::{input::InputEvent, ActiveTheme};
 use serde::{Deserialize, Serialize};
 
 /// 持久化的状态：布局 + 主题模式 + 字体大小，全部写在同一个 JSON 里。
@@ -177,7 +177,15 @@ pub struct WeixinApp {
     /// 固定左侧宽度的 resizable 状态（用于顶部搜索栏 + 左侧会话列表）
     pub session_split_state: Entity<FixedResizableState>,
 
+    pub focus_handle: FocusHandle,
+
     pub(crate) _theme_observer: Option<gpui::Subscription>,
+}
+
+impl Focusable for WeixinApp {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
 }
 
 impl WeixinApp {
@@ -190,11 +198,22 @@ impl WeixinApp {
 
         // 固定分隔状态，左侧宽度用绝对像素表示
         let session_split_state = FixedResizableState::new(cx);
+        let focus_handle = cx.focus_handle();
 
         // 初始化会话列表联系人数据
         session_list.update(cx, |list, cx| {
             list.set_contacts(chat_state.contacts().clone(), cx);
         });
+
+        // Subscribe to search input events to update border color
+        let search_input = session_list.read(cx).search_input.clone();
+        cx.subscribe(&search_input, |_, _, event: &InputEvent, cx| {
+            match event {
+                InputEvent::Focus | InputEvent::Blur => cx.notify(),
+                _ => {}
+            }
+        })
+        .detach();
 
         // 尝试从本地文件加载布局（左侧宽度 + 输入框高度）
         Self::load_layout(&session_split_state, &chat_area, cx);
@@ -218,6 +237,9 @@ impl WeixinApp {
                 ChatAreaEvent::InputResized => {
                     this.save_layout(&session_split_state_for_save2, cx);
                 }
+                ChatAreaEvent::SendMessage(content) => {
+                    this.on_send_message(content.clone(), cx);
+                }
             },
         )
         .detach();
@@ -232,6 +254,7 @@ impl WeixinApp {
             chat_area,
             chat_state,
             session_split_state,
+            focus_handle,
             _theme_observer: Some(theme_observer),
         }
     }

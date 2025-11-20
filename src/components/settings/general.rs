@@ -1,6 +1,7 @@
-use crate::ui::widgets::setting_card;
+use crate::ui::composites::setting_card;
 use gpui::{div, px, IntoElement, ParentElement, Styled, Window};
-use gpui_component::{h_flex, v_flex, ActiveTheme};
+use gpui_component::{h_flex, v_flex, ActiveTheme, Sizable, Size};
+use gpui_component::switch::Switch;
 
 use super::SettingsWindow;
 
@@ -18,7 +19,7 @@ impl SettingsWindow {
         let language_row = {
             let label = div().text_sm().text_color(foreground).child("语言");
             let btn = self.render_language_button(window, cx);
-            setting_card::row().py_3().child(label).child(btn)
+            setting_card::setting_row().py_3().child(label).child(btn)
         };
 
         let translate_language_row = {
@@ -30,7 +31,7 @@ impl SettingsWindow {
                         "在微信聊天、网页及图片中使用翻译\r\n功能时，文字会被翻译为所选语言。",
                     ));
             let btn = self.render_translate_language_button(window, cx);
-            setting_card::row().py_3().child(description).child(btn)
+            setting_card::setting_row().py_3().child(description).child(btn)
         };
 
         let appearance_card_content = {
@@ -38,7 +39,7 @@ impl SettingsWindow {
             let font_row = {
                 let label = div().text_sm().text_color(foreground).child("字体大小");
                 let slider = self.render_font_size_slider(window, cx);
-                setting_card::row()
+                setting_card::setting_row()
                     .py_3()
                     .child(label)
                     .child(h_flex().flex_1().justify_end().child(slider))
@@ -46,7 +47,7 @@ impl SettingsWindow {
             v_flex()
                 .gap_0()
                 .child(theme_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(font_row)
         };
 
@@ -69,10 +70,10 @@ impl SettingsWindow {
                         .whitespace_normal()
                         .child("开启后，可保护聊天中的文件不被修改。"),
                 );
-            let readonly_files_row = setting_card::row()
+            let readonly_files_row = setting_card::setting_row()
                 .py_3()
                 .child(readonly_text)
-                .child(crate::ui::widgets::toggle::toggle_small(cx, true));
+                .child(Switch::new("readonly_files").checked(true).with_size(Size::Small));
 
             let history_row = self.render_setting_row("显示网络搜索历史", true, cx);
             let voice_to_text_row =
@@ -99,23 +100,23 @@ impl SettingsWindow {
                         .whitespace_normal()
                         .child("开启后，使用其他软件共享屏幕、投屏和截\r\n屏时微信主窗口将不会显示在被演示的屏幕\r\n上。"),
                 );
-            let hide_window_row = setting_card::row()
+            let hide_window_row = setting_card::setting_row()
                 .py_3()
                 .child(hide_window_text)
-                .child(crate::ui::widgets::toggle::toggle_small(cx, false));
+                .child(Switch::new("hide_window").checked(false).with_size(Size::Small));
 
             v_flex()
                 .gap_0()
                 .child(readonly_files_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(history_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(voice_to_text_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(system_browser_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(keep_window_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(hide_window_row)
         };
 
@@ -126,22 +127,22 @@ impl SettingsWindow {
             v_flex()
                 .gap_0()
                 .child(auto_update_row)
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(auto_launch_row)
         };
 
         let language_card_content = v_flex()
             .gap_0()
             .child(language_row)
-            .child(setting_card::divider(cx))
+            .child(setting_card::SettingDivider::new())
             .child(translate_language_row);
 
         v_flex()
             .w_full()
             .gap_6()
-            .child(setting_card::card(cx, language_card_content))
-            .child(setting_card::card(cx, appearance_card_content))
-            .child(setting_card::card(cx, privacy_card_content))
-            .child(setting_card::card(cx, updates_card_content))
+            .child(setting_card::SettingCard::new(language_card_content))
+            .child(setting_card::SettingCard::new(appearance_card_content))
+            .child(setting_card::SettingCard::new(privacy_card_content))
+            .child(setting_card::SettingCard::new(updates_card_content))
     }
 }

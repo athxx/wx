@@ -135,12 +135,11 @@ impl Render for ChatWindow {
             .h_full()
             .flex_col()
             .items_center()
-            .child(crate::ui::widgets::window_controls::window_controls(
-                is_maximized,
-                &theme,
-                false, // 独立聊天窗口右上角不再显示原来的 Pin 按钮
-            ))
-            .child(crate::ui::widgets::chat_header_actions::chat_header_actions(&theme));
+            .child(crate::ui::base::window_controls::WindowControls::new()
+                .maximized(is_maximized)
+                .show_pin(false)
+            )
+            .child(crate::ui::composites::chat_header_actions::ChatHeaderActions::new());
 
         v_flex()
             .size_full()

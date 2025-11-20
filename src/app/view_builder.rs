@@ -5,13 +5,14 @@ use gpui::{
     div, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     WindowControlArea,
 };
-use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme};
+use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme, Icon, Sizable};
 
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let notification_layer = gpui_component::Root::render_notification_layer(window, cx);
         v_flex()
             .size_full()
+            .track_focus(&self.focus_handle)
             .child(self.render_title_bar(window, cx))
             .child(self.render_main_content(cx))
             .children(notification_layer)
@@ -62,7 +63,39 @@ impl WeixinApp {
 
     fn render_search_area(&self, cx: &Context<Self>) -> impl IntoElement {
         let search_input = self.session_list.read(cx).search_input.clone();
-        crate::ui::widgets::search_area::search_area(&search_input, cx)
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
+
+        div()
+            .bg(weixin_colors.session_list_bg)
+            .size_full()
+            .window_control_area(WindowControlArea::Drag)
+            .flex()
+            .border_l_1()
+            .border_color(theme.border)
+            .items_center()
+            .px_3()
+            .gap_2()
+            .child(crate::ui::base::search_input::SearchInput::new(
+                search_input,
+            ))
+            .child(
+                h_flex()
+                    .bg(weixin_colors.search_bar_bg)
+                    .rounded(crate::ui::constants::radius_sm())
+                    .w(crate::ui::constants::search_plus_button_size())
+                    .h(crate::ui::constants::search_plus_button_size())
+                    .justify_center()
+                    .items_center()
+                    .hover(move |s| s.bg(weixin_colors.item_hover))
+                    .child(
+                        Icon::default()
+                            .path("plus.svg")
+                            .w(crate::ui::constants::icon_xs())
+                            .h(crate::ui::constants::icon_xs())
+                            .text_color(theme.foreground),
+                    ),
+            )
     }
 
     fn render_chat_header(
@@ -105,23 +138,23 @@ impl WeixinApp {
                 .h_full()
                 .flex_col()
                 .items_center()
-                .child(crate::ui::widgets::window_controls::window_controls(
-                    is_maximized,
-                    theme,
-                    true, // 主窗口保留右上角的 Pin 按钮
-                ))
-                .child(crate::ui::widgets::chat_header_actions::chat_header_actions(theme))
+                .child(
+                    crate::ui::base::window_controls::WindowControls::new()
+                        .maximized(is_maximized)
+                        .show_pin(true),
+                )
+                .child(crate::ui::composites::chat_header_actions::ChatHeaderActions::new())
                 .into_any_element()
         } else {
             h_flex()
                 .h_full()
                 .flex_col()
                 .items_center()
-                .child(crate::ui::widgets::window_controls::window_controls(
-                    is_maximized,
-                    theme,
-                    true,
-                ))
+                .child(
+                    crate::ui::base::window_controls::WindowControls::new()
+                        .maximized(is_maximized)
+                        .show_pin(true),
+                )
                 .into_any_element()
         };
 
@@ -134,7 +167,7 @@ impl WeixinApp {
             .child(right_header)
     }
 
-    fn render_main_content(&self, _cx: &Context<Self>) -> impl IntoElement {
+    fn render_main_content(&self, cx: &Context<Self>) -> impl IntoElement {
         h_flex()
             .flex_1()
             .w_full()

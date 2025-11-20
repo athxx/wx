@@ -1,4 +1,4 @@
-﻿use gpui::{rgb, App, Hsla};
+use gpui::{rgb, App, Hsla};
 use gpui_component::{ActiveTheme as _, Theme as GpuiTheme, ThemeMode as GpuiThemeMode};
 
 pub use gpui_component::ThemeMode;
@@ -92,6 +92,10 @@ impl Theme {
         let theme = GpuiTheme::global_mut(cx);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
+        theme.primary = rgb(0x07C160).into();
+        theme.primary_hover = rgb(0x06B75B).into();
+        theme.primary_active = colors.weixin_green;
+        theme.switch = rgb(0xcccccc).into();
     }
 
     pub fn set_dark(cx: &mut App) {
@@ -100,6 +104,10 @@ impl Theme {
         let theme = GpuiTheme::global_mut(cx);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
+        theme.primary = rgb(0x07C160).into();
+        theme.primary_hover = rgb(0x13C468).into();
+        theme.primary_active = colors.weixin_green;
+        theme.switch = rgb(0xcccccc).into();
     }
 
     pub fn general_select_button_colors(cx: &App) -> (Hsla, Hsla, Hsla, Hsla) {

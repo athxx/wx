@@ -1,6 +1,7 @@
-use crate::ui::widgets::setting_card;
+use crate::ui::composites::setting_card;
 use gpui::{div, px, IntoElement, ParentElement, Styled};
-use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
+use gpui_component::{h_flex, v_flex, ActiveTheme, Icon, Sizable, Size};
+use gpui_component::switch::Switch;
 
 use super::SettingsWindow;
 
@@ -10,12 +11,11 @@ impl SettingsWindow {
         let foreground = theme.foreground;
         let muted = theme.muted_foreground;
 
-        let sound_notifications = setting_card::card(
-            cx,
+        let sound_notifications = setting_card::SettingCard::new(
             v_flex()
                 .gap_0()
                 .child(self.render_setting_row("新消息通知声音", true, cx))
-                .child(setting_card::divider(cx))
+                .child(setting_card::SettingDivider::new())
                 .child(self.render_setting_row("语音和视频通话通知声音", true, cx)),
         );
 
@@ -32,9 +32,8 @@ impl SettingsWindow {
                     .child("有内容更新时，侧边栏中该功能图标将出现标记提示。"),
             );
 
-        let badge_row = setting_card::card(
-            cx,
-            setting_card::row()
+        let badge_row = setting_card::SettingCard::new(
+            setting_card::setting_row()
                 .py_3()
                 .child(
                     h_flex()
@@ -49,7 +48,7 @@ impl SettingsWindow {
                         )
                         .child(div().text_sm().text_color(foreground).child("朋友圈")),
                 )
-                .child(crate::ui::widgets::toggle::toggle_small(cx, true)),
+                .child(Switch::new("badge_toggle").checked(true).with_size(Size::Small)),
         );
 
         v_flex()
