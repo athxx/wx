@@ -1,10 +1,12 @@
 use crate::models::Message;
 use crate::ui::theme::Theme;
 use crate::utils::time::format_time_hhmm;
-use gpui::prelude::FluentBuilder;
-use gpui::{div, relative, App, IntoElement, ParentElement, RenderOnce, Styled, Window};
-use gpui_component::{h_flex, v_flex, ActiveTheme, Sizable};
-use std::rc::Rc;
+use gpui::{prelude::FluentBuilder, Radians};
+use std::{f32::consts::PI, rc::Rc};
+
+use gpui::{div, px, relative, App, IntoElement, ParentElement, RenderOnce, Styled, Window};
+use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
+
 #[derive(IntoElement)]
 pub struct MessageBubble {
     message: Rc<Message>,
@@ -32,6 +34,56 @@ impl RenderOnce for MessageBubble {
 
         let is_self = self.message.is_self;
         let time_str = format_time_hhmm(&self.message.timestamp);
+
+        // [重构] 提前确定气泡的背景色和文字颜色
+        let bubble_bg_color = if is_self {
+            weixin_colors.message_bubble_self
+        } else {
+            weixin_colors.message_bubble_other
+        };
+
+        let bubble_text_color = if is_self {
+            weixin_colors.message_text_self
+        } else {
+            weixin_colors.message_text_other
+        };
+
+        let arrow_icon = div()
+            .flex()
+            .items_center()
+            .flex_none()
+            .text_color(bubble_bg_color)
+            .when(is_self, |t| t.mr_neg_1())
+            .when(!is_self, |t| t.ml_neg_1())
+            .child(
+                Icon::default()
+                    .w(px(10.0))
+                    .h(px(10.0))
+                    .path("bubble_arrow_left.svg")
+                    .rotate(if is_self { Radians(0.) } else { Radians(PI) }),
+            );
+
+        let colored_bubble = div()
+            .px_3()
+            .py_2()
+            .rounded(crate::ui::constants::bubble_radius())
+            .bg(bubble_bg_color)
+            .text_color(bubble_text_color)
+            .text_sm()
+            .line_height(relative(1.6))
+            .child(
+                div()
+                    .max_w(crate::ui::constants::bubble_max_width())
+                    .whitespace_normal()
+                    .child(self.message.content.clone()),
+            );
+
+        let bubble_and_arrow_wrapper = div()
+            .flex()
+            .items_center()
+            .when(is_self, |this| this.flex_row_reverse())
+            .child(arrow_icon)
+            .child(colored_bubble);
 
         div().w_full().px_5().py_2().child(
             div()
@@ -72,32 +124,8 @@ impl RenderOnce for MessageBubble {
                                         .child(time_str),
                                 ),
                         )
-                        .child(
-                            div().relative().flex().child(
-                                div()
-                                    .px_3()
-                                    .py_2()
-                                    .rounded(crate::ui::constants::bubble_radius())
-                                    .bg(if is_self {
-                                        weixin_colors.message_bubble_self
-                                    } else {
-                                        weixin_colors.message_bubble_other
-                                    })
-                                    .text_color(if is_self {
-                                        weixin_colors.message_text_self
-                                    } else {
-                                        weixin_colors.message_text_other
-                                    })
-                                    .text_sm()
-                                    .line_height(relative(1.4))
-                                    .child(
-                                        div()
-                                            .max_w(crate::ui::constants::bubble_max_width())
-                                            .whitespace_normal()
-                                            .child(self.message.content.clone()),
-                                    ),
-                            ),
-                        ),
+                        // [修改] 这里替换为新的包裹容器
+                        .child(bubble_and_arrow_wrapper),
                 ),
         )
     }

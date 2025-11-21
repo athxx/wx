@@ -112,55 +112,67 @@ impl ChatArea {
         cx: &mut App,
     ) -> gpui::Size<Pixels> {
         // 1. 获取与 MessageBubble 一致的布局常量
-        // 这些数值必须与 MessageBubble.rs 中的完全一致，否则高度计算会偏差
-        let avatar_size = crate::ui::constants::avatar_small(); // w/h
+        let avatar_size = crate::ui::constants::avatar_small();
         let bubble_max_width = crate::ui::constants::bubble_max_width();
+        // [新增] 箭头的宽度占位，需要与 message_bubble.rs 中的设置一致 (例如 6px)
+        let arrow_placeholder_width = px(6.0);
+
+        // 2. 构造布局代理 (Layout Proxy)
 
         // 模拟 Avatar 占位
         let avatar_placeholder = div().w(avatar_size).h(avatar_size);
 
+        // 模拟 Header (名字+时间) 占位，高度约 16px
         let header_placeholder = div().h(px(16.0)).w_full();
 
-        // 模拟消息气泡内容
-        // 必须包含真实的文本内容，因为换行是高度变化的核心来源
+        // 模拟消息气泡文本内容
         let content_proxy = div()
             .max_w(bubble_max_width)
             .whitespace_normal() // 关键：允许文本换行
             .text_sm() // 关键：字体大小必须一致
-            .line_height(relative(1.4)) // 关键：行高必须一致
+            .line_height(relative(1.6)) // 关键：行高必须一致
             .child(message.content.clone());
 
+        // 模拟气泡内边距
         let bubble_inner_padding = div()
             .px(px(12.)) // px_3
             .py(px(8.)) // py_2
             .child(content_proxy);
 
+        // [新增] 模拟箭头和气泡的包裹容器
+        // 这里不需要区分左右，只需要把宽度加上去，确保换行计算正确即可。
+        // 使用 flex 和 items_center 模拟真实结构。
+        let bubble_and_arrow_proxy = div()
+            .flex()
+            .items_center()
+            // 箭头的占位符
+            .child(div().w(arrow_placeholder_width).h(px(10.)).flex_none())
+            // 气泡本体
+            .child(bubble_inner_padding);
+
         // 组装整体结构
         let layout_proxy = div()
             .w_full()
-            .px(px(20.)) // px_5
-            .py(px(8.)) // py_2
+            .px(px(20.)) // px_5 outer padding
+            .py(px(8.)) // py_2 outer padding
             .child(
                 div()
                     .flex()
-                    .gap(px(12.)) // gap_3
-                    // 注意：flex_row_reverse 改变的是位置，不改变高度计算，
-                    // 所以测量时可以统一用默认方向，只要宽度约束正确即可。
+                    .gap(px(12.)) // gap_3 between avatar and content
                     .child(avatar_placeholder)
                     .child(
                         gpui_component::v_flex()
-                            .gap(px(6.)) // gap_1p5
+                            .gap(px(6.)) // gap_1p5 between header and bubble
                             .child(header_placeholder)
-                            .child(bubble_inner_padding),
+                            // [修改] 使用新的包含箭头的代理
+                            .child(bubble_and_arrow_proxy),
                     ),
             );
 
         // 3. 执行测量
         let mut element = layout_proxy.into_any_element();
-
         // 给予确定的宽度，让 GPUI 计算内容所需的高度
         let available_space = size(AvailableSpace::Definite(width), AvailableSpace::MinContent);
-
         element.layout_as_root(available_space, window, cx)
     }
 
