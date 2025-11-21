@@ -6,7 +6,7 @@ use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
-use crate::app::state::GlobalMainApp;
+use crate::app::state::{ChatStore, ChatStoreEvent};
 use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::ChatSession;
 use crate::ui::theme::Theme;
@@ -28,6 +28,7 @@ pub struct ChatWindow {
     chat_area: Entity<ChatArea>,
     chat_title: String,
     contact_id: String,
+    store: Entity<ChatStore>,
 }
 
 impl ChatWindow {
@@ -52,73 +53,73 @@ impl ChatWindow {
         }
     }
 
-    fn new(window: &mut Window, cx: &mut Context<Self>, contact_id: String) -> Self {
-        let contacts_repo = MemoryContactsRepo::new();
-        let sessions_repo = MemorySessionsRepo::new();
-        let mut chat_title = String::new();
-
+    fn new(
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        store: Entity<ChatStore>,
+        contact_id: String,
+    ) -> Self {
         let chat_area = ChatArea::view(window, cx);
+
+        // 1. 从 Store 获取会话数据
+        let session = store.update(cx, |s, _| s.get_or_load_session(&contact_id));
+        let chat_title = session.contact.display_title();
+
+        // 初始化 ChatArea
+        chat_area.update(cx, |area, cx| {
+            area.set_session(Some(session), cx);
+        });
+
+        // 2. 监听 ChatArea 的发送动作 -> 调用 Store
+        let store_clone = store.clone();
+        let contact_id_clone = contact_id.clone();
         cx.subscribe(
             &chat_area,
-            |this, _, event: &ChatAreaEvent, cx| match event {
+            move |_, _, event: &ChatAreaEvent, cx| match event {
                 ChatAreaEvent::SendMessage(content) => {
-                    this.handle_send_message(content.clone(), cx);
+                    store_clone.update(cx, |s, cx| {
+                        s.send_message(contact_id_clone.clone(), content.clone(), cx);
+                    });
                 }
                 _ => {}
             },
         )
         .detach();
-        // 根据 contact_id 构造一个会话并挂到 ChatArea 上。
-        if let Some(contact) = contacts_repo
-            .get_all()
-            .into_iter()
-            .find(|c| c.id == contact_id)
-        {
-            // 构造标题文案，与主窗口保持一致。
-            chat_title = contact.display_title();
 
-            let mut session = ChatSession::new(contact.clone());
-            session.messages = sessions_repo.get_messages(&contact);
-
-            chat_area.update(cx, |area, cx_chat| {
-                area.set_session(Some(session), cx_chat);
-            });
-        }
+        // 3. 监听 Store 的更新 -> 更新 ChatArea
+        // 无论是主窗口发的，还是本窗口发的，都会通过这个事件回来
+        cx.subscribe(&store, |this, _, event: &ChatStoreEvent, cx| {
+            match event {
+                ChatStoreEvent::NewMessage {
+                    contact_id,
+                    message,
+                } => {
+                    // 只有当消息属于当前窗口的联系人时才更新
+                    if contact_id == &this.contact_id {
+                        this.chat_area.update(cx, |area, cx| {
+                            area.add_message(message.clone(), cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
 
         Self {
             chat_area,
             chat_title,
             contact_id,
+            store,
         }
     }
-    fn handle_send_message(&mut self, content: String, cx: &mut Context<Self>) {
-        // 构造一条新消息 (模拟发送)
-        let message = Message::new(
-            format!("msg-{}", chrono::Utc::now().timestamp_millis()),
-            "self",
-            "我",
-            content.clone(),
-            true,
-        );
 
-        // 通知 ChatArea 更新 UI
-        self.chat_area.update(cx, |area, cx| {
-            area.add_message(message, cx);
-        });
-
-        if let Some(global_app) = cx.try_global::<GlobalMainApp>() {
-            let app_entity = global_app.0.clone();
-            let contact_id = self.contact_id.clone();
-            let content_sync = content.clone();
-
-            // 跨 View 更新：在主窗口的 Entity 上执行 update
-            cx.update_entity(&app_entity, move |app, cx| {
-                app.handle_external_message(contact_id, content_sync, cx);
-            });
-        }
-    }
-    pub fn view(window: &mut Window, cx: &mut App, contact_id: String) -> Entity<Self> {
-        cx.new(|cx| Self::new(window, cx, contact_id))
+    pub fn view(
+        window: &mut Window,
+        cx: &mut App,
+        store: Entity<ChatStore>,
+        contact_id: String,
+    ) -> Entity<Self> {
+        cx.new(|cx| Self::new(window, cx, store, contact_id))
     }
 }
 

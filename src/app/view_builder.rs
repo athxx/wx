@@ -26,7 +26,7 @@ impl Render for WeixinApp {
 impl WeixinApp {
     fn render_title_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::ui::constants as UI;
-        let current_chat_title = self.get_current_chat_title();
+        let current_chat_title = self.get_current_chat_title(cx);
         let has_session = !current_chat_title.is_empty();
 
         h_flex()

@@ -2,7 +2,7 @@ use gpui::{px, App, AppContext, Bounds, Size, WindowBounds, WindowKind, WindowOp
 use gpui_component::{Root, TitleBar};
 
 use crate::app::actions::{OpenChatWindow, SelectSession, ToolbarClicked};
-use crate::app::state::GlobalMainApp;
+use crate::app::state::ChatStore;
 use crate::app::state::{Preferences, WeixinApp};
 use crate::components::{ChatWindow, SettingsWindow};
 use crate::ui::theme::{Theme, ThemeMode};
@@ -33,7 +33,7 @@ pub fn open_main_window(cx: &mut App) {
     };
 
     let window_bounds = Bounds::centered(None, window_size, cx);
-
+    let store = cx.new(|_| ChatStore::new());
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(window_bounds)),
         titlebar: Some(TitleBar::title_bar_options()),
@@ -46,8 +46,8 @@ pub fn open_main_window(cx: &mut App) {
     };
 
     cx.open_window(options, |window, cx| {
-        let app_view = WeixinApp::view(window, cx);
-        cx.set_global(GlobalMainApp(app_view.clone()));
+        let app_view = WeixinApp::view(window, cx, store.clone());
+
         // 在 App 级别路由 SelectSession / ToolbarClicked 动作到 WeixinApp 实例，
         // 确保通过 window.dispatch_action 触发的动作能够被根 Workspace 处理。
         {
@@ -69,9 +69,9 @@ pub fn open_main_window(cx: &mut App) {
         }
 
         // 双击会话时打开独立聊天窗口。
-        cx.on_action(|action: &OpenChatWindow, cx_app: &mut App| {
-            // 这里不依赖 WeixinApp 的内部状态，只根据 contact_id 打开一个新的聊天窗口。
-            open_chat_window(action.contact_id.clone(), cx_app);
+        let store_for_chat = store.clone();
+        cx.on_action(move |action: &OpenChatWindow, cx_app: &mut App| {
+            open_chat_window(action.contact_id.clone(), store_for_chat.clone(), cx_app);
         });
 
         cx.new(|cx| Root::new(app_view, window, cx))
@@ -118,7 +118,7 @@ pub fn open_settings_window(cx: &mut App) {
 }
 
 /// 打开独立聊天窗口，内容与主窗口右侧聊天区域类似。
-pub fn open_chat_window(contact_id: String, cx: &mut App) {
+pub fn open_chat_window(contact_id: String, store: gpui::Entity<ChatStore>, cx: &mut App) {
     let window_size = Size {
         width: crate::ui::constants::chat_window_width(),
         height: crate::ui::constants::app_window_height(),
@@ -143,7 +143,8 @@ pub fn open_chat_window(contact_id: String, cx: &mut App) {
     }
 
     cx.open_window(options, move |window, cx| {
-        let chat_view = ChatWindow::view(window, cx, contact_id.clone());
+        // [修改] 传入 store
+        let chat_view = ChatWindow::view(window, cx, store, contact_id.clone());
         cx.new(|cx| Root::new(chat_view, window, cx))
     })
     .ok();

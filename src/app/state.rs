@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::app::actions::{SelectSession, ToolbarClicked};
 use crate::components::{ChatArea, ChatAreaEvent, SessionList, ToolBar};
 use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::{ChatSession, Contact, Message};
 use crate::ui::fixed_resizable::{FixedResizableEvent, FixedResizableState};
 use crate::ui::theme::{Theme, ThemeMode};
-use gpui::{px, App, AppContext, Context, Entity, FocusHandle, Focusable, Window};
+use gpui::{px, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, Window};
 use gpui_component::{input::InputEvent, ActiveTheme};
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +25,12 @@ struct LayoutState {
     #[serde(default)]
     font_size: Option<f32>,
 }
-
+pub enum ChatStoreEvent {
+    NewMessage {
+        contact_id: String,
+        message: Message,
+    },
+}
 impl LayoutState {
     /// 从配置文件加载布局状态，如果失败则返回给定的默认值
     fn load_or(default: LayoutState) -> Self {
@@ -102,14 +109,15 @@ impl Preferences {
 }
 
 /// 纯领域层的聊天状态，不依赖 UI 组件。
-struct ChatState {
+pub struct ChatStore {
     sessions_repo: MemorySessionsRepo,
     contacts: Vec<Contact>,
-    current_session: Option<ChatSession>,
+    // 缓存已加载的会话，确保多个窗口操作的是同一个对象
+    sessions: HashMap<String, ChatSession>,
 }
-
-impl ChatState {
-    fn new() -> Self {
+impl EventEmitter<ChatStoreEvent> for ChatStore {}
+impl ChatStore {
+    pub fn new() -> Self {
         let contacts_repo = MemoryContactsRepo::new();
         let sessions_repo = MemorySessionsRepo::new();
         let contacts = contacts_repo.get_all();
@@ -117,65 +125,80 @@ impl ChatState {
         Self {
             sessions_repo,
             contacts,
-            current_session: None,
+            sessions: HashMap::new(),
         }
     }
 
-    fn contacts(&self) -> &Vec<Contact> {
+    pub fn contacts(&self) -> &Vec<Contact> {
         &self.contacts
     }
 
-    fn select_session(&mut self, contact_id: &str) -> Option<ChatSession> {
-        if let Some(contact) = self.contacts.iter().find(|c| c.id == contact_id).cloned() {
-            let mut session = ChatSession::new(contact.clone());
-
-            session.messages = self.sessions_repo.get_messages(&contact);
-
-            self.current_session = Some(session.clone());
-
-            Some(session)
-        } else {
-            None
+    // 获取或加载会话
+    pub fn get_or_load_session(&mut self, contact_id: &str) -> ChatSession {
+        if let Some(session) = self.sessions.get(contact_id) {
+            return session.clone();
         }
+
+        // 模拟从 Repo 加载
+        let contact = self
+            .contacts
+            .iter()
+            .find(|c| c.id == contact_id)
+            .cloned()
+            .expect("Contact not found");
+
+        let mut session = ChatSession::new(contact.clone());
+
+        session.messages = self
+            .sessions_repo
+            .get_messages(&contact)
+            .into_iter()
+            .map(std::rc::Rc::new) // <--- 这里进行包装转换
+            .collect();
+
+        self.sessions
+            .insert(contact_id.to_string(), session.clone());
+        session
     }
+    // 发送消息：修改状态并发出事件
+    pub fn send_message(&mut self, contact_id: String, content: String, cx: &mut Context<Self>) {
+        let mut session = self.get_or_load_session(&contact_id);
 
-    fn send_message(&mut self, content: String) -> Option<(ChatSession, Message)> {
-        if let Some(session) = &mut self.current_session {
-            let message = Message::new(
-                format!("msg-{}", chrono::Utc::now().timestamp_millis()),
-                "self",
-                "我",
-                content.clone(),
-                true,
-            );
+        let message = Message::new(
+            format!("msg-{}", chrono::Utc::now().timestamp_millis()),
+            "self",
+            "我",
+            content.clone(),
+            true,
+        );
 
-            session.add_message(message.clone());
+        // 1. 更新数据
+        session.add_message(message.clone());
+        self.sessions.insert(contact_id.clone(), session);
 
-            Some((session.clone(), message))
-        } else {
-            None
+        // 2. 更新联系人列表的最后一条消息预览
+        if let Some(contact) = self.contacts.iter_mut().find(|c| c.id == contact_id) {
+            contact.last_message = Some(content);
+            contact.last_message_time = Some(chrono::Local::now());
         }
-    }
 
-    fn current_session(&self) -> Option<&ChatSession> {
-        self.current_session.as_ref()
-    }
-
-    fn clear_session(&mut self) {
-        self.current_session = None;
+        // 3. 通知订阅者
+        cx.notify(); // 通知使用了 cx.observe 的视图
+        cx.emit(ChatStoreEvent::NewMessage {
+            contact_id,
+            message,
+        }); // 发送具体事件
     }
 }
 // 1. 定义一个全局结构体，用于持有主窗口的 Entity
-pub struct GlobalMainApp(pub Entity<WeixinApp>);
 
-impl gpui::Global for GlobalMainApp {}
 pub struct WeixinApp {
     pub toolbar: Entity<ToolBar>,
     pub session_list: Entity<SessionList>,
     pub chat_area: Entity<ChatArea>,
 
     /// 聊天领域状态（会话列表、当前会话等）。
-    chat_state: ChatState,
+    pub store: Entity<ChatStore>,
 
     /// 固定左侧宽度的 resizable 状态（用于顶部搜索栏 + 左侧会话列表）
     pub session_split_state: Entity<FixedResizableState>,
@@ -192,23 +215,54 @@ impl Focusable for WeixinApp {
 }
 
 impl WeixinApp {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let chat_state = ChatState::new();
-
+    pub fn new(window: &mut Window, cx: &mut Context<Self>, store: Entity<ChatStore>) -> Self {
+        // 1. 初始化子视图组件
         let toolbar = ToolBar::view(window, cx);
         let session_list = SessionList::view(window, cx);
         let chat_area = ChatArea::view(window, cx);
 
-        // 固定分隔状态，左侧宽度用绝对像素表示
+        // 2. 初始化布局状态
         let session_split_state = FixedResizableState::new(cx);
         let focus_handle = cx.focus_handle();
 
-        // 初始化会话列表联系人数据
+        // 3. [核心修改] 从 Store 初始化数据到会话列表
+        //    直接读取 store 中的联系人数据，不再使用本地的 chat_state
+        let contacts = store.read(cx).contacts().clone();
         session_list.update(cx, |list, cx| {
-            list.set_contacts(chat_state.contacts().clone(), cx);
+            list.set_contacts(contacts, cx);
         });
 
-        // Subscribe to search input events to update border color
+        // 4. [核心修改] 订阅 Store 的全局事件 (实现多窗口同步)
+        cx.subscribe(&store, |this, _, event: &ChatStoreEvent, cx| {
+            match event {
+                ChatStoreEvent::NewMessage {
+                    contact_id,
+                    message,
+                } => {
+                    // A. 更新左侧列表的“最后一条消息”预览
+                    this.session_list.update(cx, |list, cx| {
+                        list.update_contact_last_message(contact_id, message.content.clone(), cx);
+                    });
+
+                    // B. 如果右侧聊天区域正好打开的是这个会话，则添加消息气泡
+                    //    注意：这里使用了 .current_session() Getter 方法，修复了之前的私有字段访问错误
+                    let current_id = this
+                        .chat_area
+                        .read(cx)
+                        .current_session()
+                        .map(|s| s.contact.id.clone());
+
+                    if current_id.as_deref() == Some(contact_id) {
+                        this.chat_area.update(cx, |area, cx| {
+                            area.add_message(message.clone(), cx);
+                        });
+                    }
+                }
+            }
+        })
+        .detach();
+
+        // 5. 监听搜索框焦点事件 (保持原有逻辑)
         let search_input = session_list.read(cx).search_input.clone();
         cx.subscribe(&search_input, |_, _, event: &InputEvent, cx| match event {
             InputEvent::Focus | InputEvent::Blur => cx.notify(),
@@ -216,10 +270,10 @@ impl WeixinApp {
         })
         .detach();
 
-        // 尝试从本地文件加载布局（左侧宽度 + 输入框高度）
+        // 6. 加载持久化的布局配置 (保持原有逻辑)
         Self::load_layout(&session_split_state, &chat_area, cx);
 
-        // 监听分隔状态变更，在松开鼠标时持久化布局
+        // 7. 监听分割线拖拽事件 (保持原有逻辑)
         let session_split_state_for_save = session_split_state.clone();
         cx.subscribe(
             &session_split_state,
@@ -229,7 +283,7 @@ impl WeixinApp {
         )
         .detach();
 
-        // 监听聊天输入框高度变更，结束拖动时持久化布局
+        // 8. 监听聊天区域事件 (输入框调整高度 + 发送消息)
         let session_split_state_for_save2 = session_split_state.clone();
         let chat_area_for_save = chat_area.clone();
         cx.subscribe(
@@ -239,29 +293,33 @@ impl WeixinApp {
                     this.save_layout(&session_split_state_for_save2, cx);
                 }
                 ChatAreaEvent::SendMessage(content) => {
+                    // 调用本结构体的 on_send_message 方法
                     this.on_send_message(content.clone(), cx);
                 }
             },
         )
         .detach();
 
+        // 9. 监听主题变化 (保持原有逻辑)
         let theme_observer = cx.observe_global::<Theme>(|_this, cx| {
             cx.notify();
         });
 
+        // 10. 返回结构体
         Self {
             toolbar,
             session_list,
             chat_area,
-            chat_state,
+
             session_split_state,
             focus_handle,
             _theme_observer: Some(theme_observer),
+            store, // [新增] 保存共享 Store 的引用
         }
     }
 
-    pub fn view(window: &mut Window, cx: &mut App) -> Entity<Self> {
-        cx.new(|cx| Self::new(window, cx))
+    pub fn view(window: &mut Window, cx: &mut App, store: Entity<ChatStore>) -> Entity<Self> {
+        cx.new(|cx| Self::new(window, cx, store))
     }
 
     fn load_layout(
@@ -318,52 +376,54 @@ impl WeixinApp {
     }
 
     pub fn on_session_selected(&mut self, contact_id: &str, cx: &mut Context<Self>) {
-        if let Some(session) = self.chat_state.select_session(contact_id) {
-            self.chat_area.update(cx, |area, cx| {
-                area.set_session(Some(session), cx);
-            });
-        }
+        // [修改] 从 Store 获取会话
+        let session = self
+            .store
+            .update(cx, |store, _| store.get_or_load_session(contact_id));
+
+        self.chat_area.update(cx, |area, cx| {
+            area.set_session(Some(session), cx);
+        });
     }
 
     pub fn on_send_message(&mut self, content: String, cx: &mut Context<Self>) {
-        if let Some((session, message)) = self.chat_state.send_message(content.clone()) {
-            self.chat_area.update(cx, |area, cx| {
-                area.add_message(message, cx);
-            });
+        // [修改] 这里改为调用 current_session() 方法
+        let current_contact_id = self
+            .chat_area
+            .read(cx)
+            .current_session() // <--- 加上括号
+            .map(|s| s.contact.id.clone());
 
-            self.session_list.update(cx, |list, cx| {
-                list.update_contact_last_message(&session.contact.id, content, cx);
+        if let Some(contact_id) = current_contact_id {
+            self.store.update(cx, |store, cx| {
+                store.send_message(contact_id, content, cx);
             });
-
-            cx.notify();
         }
     }
 
-    pub fn get_current_chat_title(&self) -> String {
-        self.chat_state
-            .current_session()
+    pub fn get_current_chat_title(&self, cx: &App) -> String {
+        // [修改] 这里改为调用 current_session() 方法
+        self.chat_area
+            .read(cx)
+            .current_session() // <--- 加上括号
             .map(|s| s.contact.display_title())
-            // 如果未选择会话，则不显示任何标题文本
             .unwrap_or_else(String::new)
     }
 
-    /// Action: 选择会话，由根视图统一处理。
-    /// 如果再次点击当前会话，则视为取消选择，恢复到欢迎界面。
     pub fn on_action_select_session(&mut self, action: &SelectSession, cx: &mut Context<Self>) {
-        let is_same_as_current = self
-            .chat_state
-            .current_session()
-            .map(|s| s.contact.id == action.contact_id)
-            .unwrap_or(false);
+        // [修改] 这里改为调用 current_session() 方法
+        let current_contact_id = self
+            .chat_area
+            .read(cx)
+            .current_session() // <--- 加上括号
+            .map(|s| s.contact.id.clone());
 
-        if is_same_as_current {
-            // 取消选择当前会话：清空 ChatState，并让 ChatArea 显示欢迎页。
-            self.chat_state.clear_session();
-            self.chat_area.update(cx, |area, cx| {
-                area.set_session(None, cx);
-            });
+        let is_same = current_contact_id.as_deref() == Some(&action.contact_id);
+
+        if is_same {
+            self.chat_area
+                .update(cx, |area, cx| area.set_session(None, cx));
         } else {
-            // 选择新的会话
             self.on_session_selected(&action.contact_id, cx);
         }
     }
@@ -371,45 +431,5 @@ impl WeixinApp {
     /// Action: 工具栏点击，目前先简单打印，后续可以根据 item 做不同操作。
     pub fn on_action_toolbar_clicked(&mut self, action: &ToolbarClicked, _cx: &mut Context<Self>) {
         println!("Toolbar item clicked: {:?}", action.item);
-    }
-    pub fn handle_external_message(
-        &mut self,
-        contact_id: String,
-        content: String,
-        cx: &mut Context<Self>,
-    ) {
-        // A. 更新左侧会话列表的“最后一条消息”预览
-        self.session_list.update(cx, |list, cx| {
-            list.update_contact_last_message(&contact_id, content.clone(), cx);
-        });
-
-        // B. 如果主窗口当前正好也打开了这个会话，则需要把消息显示在右侧聊天区域
-        // 判断当前会话是否与消息所属联系人一致
-        let is_current_session = self
-            .chat_state
-            .current_session()
-            .map(|s| s.contact.id == contact_id)
-            .unwrap_or(false);
-
-        if is_current_session {
-            // 构造消息对象
-            let message = Message::new(
-                format!("msg-ext-{}", chrono::Utc::now().timestamp_millis()),
-                "self",
-                "我",
-                content.clone(),
-                true,
-            );
-
-            // 更新 UI (ChatArea)
-            self.chat_area.update(cx, |area, cx| {
-                area.add_message(message.clone(), cx);
-            });
-
-            // 更新内存数据 (ChatState)，防止切换回来后消失
-            if let Some(session) = &mut self.chat_state.current_session {
-                session.add_message(message);
-            }
-        }
     }
 }

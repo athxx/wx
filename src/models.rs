@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 
@@ -93,7 +95,7 @@ impl Message {
 #[derive(Debug, Clone)]
 pub struct ChatSession {
     pub contact: Contact,
-    pub messages: Vec<Message>,
+    pub messages: Vec<Rc<Message>>,
 }
 
 impl ChatSession {
@@ -105,6 +107,9 @@ impl ChatSession {
     }
 
     pub fn add_message(&mut self, message: Message) {
+        self.messages.push(Rc::new(message));
+    }
+    pub fn add_rc_message(&mut self, message: Rc<Message>) {
         self.messages.push(message);
     }
 }

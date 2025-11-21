@@ -4,15 +4,15 @@ use crate::utils::time::format_time_hhmm;
 use gpui::prelude::FluentBuilder;
 use gpui::{div, relative, App, IntoElement, ParentElement, RenderOnce, Styled, Window};
 use gpui_component::{h_flex, v_flex, ActiveTheme, Sizable};
-
+use std::rc::Rc;
 #[derive(IntoElement)]
 pub struct MessageBubble {
-    message: Message,
+    message: Rc<Message>,
     is_group: bool,
 }
 
 impl MessageBubble {
-    pub fn new(message: Message) -> Self {
+    pub fn new(message: Rc<Message>) -> Self {
         Self {
             message,
             is_group: false,
@@ -44,7 +44,7 @@ impl RenderOnce for MessageBubble {
                         &self.message.sender_id,
                     ))
                     .w(crate::ui::constants::avatar_small())
-                    .h(crate::ui::constants::avatar_small()) // Added explicit height to match previous code which used Sizable trait implicitly via with_size, but our Avatar uses w/h methods
+                    .h(crate::ui::constants::avatar_small())
                     .rounded(crate::ui::constants::avatar_small_radius()),
                 )
                 .child(
@@ -89,8 +89,13 @@ impl RenderOnce for MessageBubble {
                                         weixin_colors.message_text_other
                                     })
                                     .text_sm()
-                                    .line_height(relative(1.6))
-                                    .child(div().max_w(crate::ui::constants::bubble_max_width()).whitespace_normal().child(self.message.content.clone())),
+                                    .line_height(relative(1.4))
+                                    .child(
+                                        div()
+                                            .max_w(crate::ui::constants::bubble_max_width())
+                                            .whitespace_normal()
+                                            .child(self.message.content.clone()),
+                                    ),
                             ),
                         ),
                 ),

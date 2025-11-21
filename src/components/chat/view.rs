@@ -1,5 +1,5 @@
 use gpui::{
-    div, px, size, App, AppContext, AvailableSpace, Context, Entity, EventEmitter,
+    div, px, relative, size, App, AppContext, AvailableSpace, Context, Entity, EventEmitter,
     InteractiveElement, IntoElement, ParentElement, Pixels, Render, Styled, Window,
     WindowControlArea,
 };
@@ -10,9 +10,12 @@ use gpui_component::{
 };
 use std::rc::Rc;
 
-use crate::components::chat::input::{ChatInput, ChatInputEvent};
 use crate::models::{ChatSession, Message};
 use crate::ui::theme::Theme;
+use crate::{
+    components::chat::input::{ChatInput, ChatInputEvent},
+    ui::constants,
+};
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
@@ -28,6 +31,10 @@ pub struct ChatArea {
     /// 聊天消息虚拟列表的滚动句柄和滚动条状态。
     scroll_handle: VirtualListScrollHandle,
     scroll_state: ScrollbarState,
+    /// 缓存的消息高度列表，直接传给 virtual_list
+    item_sizes: Rc<Vec<gpui::Size<Pixels>>>,
+    /// 记录上次计算高度时的窗口宽度，用于判断是否需要重新计算折行
+    last_layout_width: Option<Pixels>,
 }
 
 /// ChatArea 对外发送的事件（例如输入框高度调整完成）。
@@ -63,15 +70,20 @@ impl ChatArea {
             drag_start_height: default_input_height,
             scroll_handle: VirtualListScrollHandle::new(),
             scroll_state: ScrollbarState::default(),
+            item_sizes: Rc::new(Vec::new()),
+            last_layout_width: None,
         }
     }
 
     pub fn view(window: &mut Window, cx: &mut App) -> Entity<Self> {
         cx.new(|cx| Self::new(window, cx))
     }
-
+    pub fn current_session(&self) -> Option<&ChatSession> {
+        self.current_session.as_ref()
+    }
     pub fn set_session(&mut self, session: Option<ChatSession>, cx: &mut Context<Self>) {
         self.current_session = session;
+        self.item_sizes = Rc::new(Vec::new());
         if let Some(session) = &self.current_session {
             self.scroll_handle.scroll_to_item(
                 session.messages.len().saturating_sub(1),
@@ -89,6 +101,89 @@ impl ChatArea {
                 gpui::ScrollStrategy::Top,
             );
             cx.notify();
+        }
+    }
+    /// 测量单条消息的高度
+    fn measure_message(
+        &self,
+        message: &Rc<Message>,
+        width: Pixels,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> gpui::Size<Pixels> {
+        // 1. 获取与 MessageBubble 一致的布局常量
+        // 这些数值必须与 MessageBubble.rs 中的完全一致，否则高度计算会偏差
+        let avatar_size = crate::ui::constants::avatar_small(); // w/h
+        let bubble_max_width = crate::ui::constants::bubble_max_width();
+
+        // 模拟 Avatar 占位
+        let avatar_placeholder = div().w(avatar_size).h(avatar_size);
+
+        let header_placeholder = div().h(px(16.0)).w_full();
+
+        // 模拟消息气泡内容
+        // 必须包含真实的文本内容，因为换行是高度变化的核心来源
+        let content_proxy = div()
+            .max_w(bubble_max_width)
+            .whitespace_normal() // 关键：允许文本换行
+            .text_sm() // 关键：字体大小必须一致
+            .line_height(relative(1.4)) // 关键：行高必须一致
+            .child(message.content.clone());
+
+        let bubble_inner_padding = div()
+            .px(px(12.)) // px_3
+            .py(px(8.)) // py_2
+            .child(content_proxy);
+
+        // 组装整体结构
+        let layout_proxy = div()
+            .w_full()
+            .px(px(20.)) // px_5
+            .py(px(8.)) // py_2
+            .child(
+                div()
+                    .flex()
+                    .gap(px(12.)) // gap_3
+                    // 注意：flex_row_reverse 改变的是位置，不改变高度计算，
+                    // 所以测量时可以统一用默认方向，只要宽度约束正确即可。
+                    .child(avatar_placeholder)
+                    .child(
+                        gpui_component::v_flex()
+                            .gap(px(6.)) // gap_1p5
+                            .child(header_placeholder)
+                            .child(bubble_inner_padding),
+                    ),
+            );
+
+        // 3. 执行测量
+        let mut element = layout_proxy.into_any_element();
+
+        // 给予确定的宽度，让 GPUI 计算内容所需的高度
+        let available_space = size(AvailableSpace::Definite(width), AvailableSpace::MinContent);
+
+        element.layout_as_root(available_space, window, cx)
+    }
+
+    /// 重新计算所有消息的高度（用于切换会话或窗口宽度改变）
+    fn remeasure_all_messages(
+        &mut self,
+        width: Pixels,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(session) = &self.current_session {
+            let mut sizes = Vec::with_capacity(session.messages.len());
+
+            // 这里虽然是循环，但只在特定时机触发，而不是每帧触发
+            for msg in &session.messages {
+                let size = self.measure_message(msg, width, window, cx);
+                sizes.push(size);
+            }
+
+            self.item_sizes = Rc::new(sizes);
+            self.last_layout_width = Some(width);
+        } else {
+            self.item_sizes = Rc::new(Vec::new());
         }
     }
 }
@@ -154,7 +249,39 @@ impl Render for ChatArea {
         let bg_color = weixin_colors.chat_area_bg;
 
         let window_width = window.viewport_size().width;
+        let mut needs_remeasure = false;
+        if let Some(last_w) = self.last_layout_width {
+            if (last_w - window_width).abs() > px(1.0) {
+                needs_remeasure = true;
+            }
+        } else {
+            // 第一次渲染，必须计算
+            needs_remeasure = true;
+        }
+        let msg_count = self
+            .current_session
+            .as_ref()
+            .map(|s| s.messages.len())
+            .unwrap_or(0);
+        let cache_count = self.item_sizes.len();
 
+        if needs_remeasure {
+            // 情况A：宽度变了，全部重算
+            self.remeasure_all_messages(window_width, window, cx);
+        } else if msg_count > cache_count {
+            // 情况B：宽度没变，只有新消息 -> 增量计算
+            if let Some(session) = &self.current_session {
+                // 复制现有的尺寸列表
+                let mut new_sizes = (*self.item_sizes).clone();
+                // 只计算新增的部分
+                for i in cache_count..msg_count {
+                    let msg = &session.messages[i];
+                    let size = self.measure_message(msg, window_width, window, cx);
+                    new_sizes.push(size);
+                }
+                self.item_sizes = Rc::new(new_sizes);
+            }
+        }
         // 没有选中会话时：右侧只显示居中的微信图标，不显示消息和输入框。
         if self.current_session.is_none() {
             let icon_color = no_session_text_color.opacity(0.35);
@@ -177,33 +304,11 @@ impl Render for ChatArea {
 
         // 选中会话时：上面是消息列表（虚拟列表），下面是拖动条 + 输入框。
         let messages_view = {
-            let session = self.current_session.as_ref().unwrap();
-            let is_group = session.contact.is_group;
-
-            let available_space = size(
-                AvailableSpace::Definite(window_width),
-                AvailableSpace::MinContent,
-            );
-
-            let item_sizes: Rc<Vec<gpui::Size<Pixels>>> = Rc::new(
-                session
-                    .messages
-                    .iter()
-                    .map(|msg| {
-                        let bubble =
-                            crate::ui::composites::message_bubble::MessageBubble::new(msg.clone())
-                                .group(is_group);
-                        let mut el = div().w_full().child(bubble).into_any_element();
-                        let bubble_size = el.layout_as_root(available_space, window, cx);
-
-                        gpui::size(bubble_size.width, bubble_size.height)
-                    })
-                    .collect::<Vec<_>>(),
-            );
+            // 这里不再进行 map layout，而是直接使用 self.item_sizes
             v_virtual_list(
                 cx.entity().clone(),
                 "chat-messages",
-                item_sizes,
+                self.item_sizes.clone(),
                 move |view, visible_range, _window, cx| {
                     let Some(session) = &view.current_session else {
                         return Vec::new();
@@ -212,8 +317,8 @@ impl Render for ChatArea {
 
                     visible_range
                         .map(|ix| {
-                            // 这里直接复用原来的气泡布局，不再手动设置高度，
-                            // 高度由 VirtualList 根据预先测量的 item_sizes 控制。
+                            // [核心优化] session.messages[ix] 是 Rc<Message>
+                            // clone() 极其廉价
                             let bubble = crate::ui::composites::message_bubble::MessageBubble::new(
                                 session.messages[ix].clone(),
                             )
@@ -228,7 +333,6 @@ impl Render for ChatArea {
             .track_scroll(&self.scroll_handle)
             .into_any_element()
         };
-
         v_flex()
             .flex_1()
             .size_full()
