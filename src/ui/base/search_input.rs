@@ -1,4 +1,7 @@
-use gpui::{div, App, Entity, Focusable, IntoElement, ParentElement, RenderOnce, Styled, Window};
+use gpui::{
+    div, App, Entity, Focusable, InteractiveElement, IntoElement, ParentElement, RenderOnce,
+    Styled, Window,
+};
 use gpui_component::{
     input::{Input, InputState},
     ActiveTheme, Icon, Sizable,
@@ -27,6 +30,9 @@ impl RenderOnce for SearchInput {
             .rounded(crate::ui::constants::radius_sm())
             .py_1()
             .border_1()
+            .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
             .border_color(if is_focused {
                 theme.primary
             } else {

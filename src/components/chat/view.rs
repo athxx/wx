@@ -289,6 +289,9 @@ impl Render for ChatArea {
                 div()
                     .h(self.current_input_height)
                     .w_full()
+                    .on_mouse_down(gpui::MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
                     .bg(bg_color)
                     .child(self.chat_input.clone()),
             )

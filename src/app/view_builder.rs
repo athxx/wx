@@ -2,7 +2,7 @@ use crate::app::state::WeixinApp;
 use crate::ui::fixed_resizable::fixed_h_resizable;
 use crate::ui::theme::Theme;
 use gpui::{
-    div, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
+    div, px, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     WindowControlArea,
 };
 use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme, Icon, Sizable};
@@ -10,9 +10,13 @@ use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme, Icon, Sizable}
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let notification_layer = gpui_component::Root::render_notification_layer(window, cx);
+
         v_flex()
             .size_full()
-            .track_focus(&self.focus_handle)
+            .on_mouse_down(gpui::MouseButton::Left, |_, window, _| {
+                window.blur();
+            })
+            .child(div().w(px(0.)).h(px(0.)).track_focus(&self.focus_handle))
             .child(self.render_title_bar(window, cx))
             .child(self.render_main_content(cx))
             .children(notification_layer)

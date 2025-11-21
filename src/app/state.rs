@@ -207,11 +207,9 @@ impl WeixinApp {
 
         // Subscribe to search input events to update border color
         let search_input = session_list.read(cx).search_input.clone();
-        cx.subscribe(&search_input, |_, _, event: &InputEvent, cx| {
-            match event {
-                InputEvent::Focus | InputEvent::Blur => cx.notify(),
-                _ => {}
-            }
+        cx.subscribe(&search_input, |_, _, event: &InputEvent, cx| match event {
+            InputEvent::Focus | InputEvent::Blur => cx.notify(),
+            _ => {}
         })
         .detach();
 
