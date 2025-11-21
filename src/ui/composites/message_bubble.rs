@@ -1,11 +1,14 @@
+use std::{f32::consts::PI, rc::Rc};
+
+use gpui::{
+    div, prelude::FluentBuilder, relative, App, IntoElement, ParentElement, Radians, RenderOnce,
+    Styled, Window,
+};
+use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
+
 use crate::models::Message;
 use crate::ui::theme::Theme;
 use crate::utils::time::format_time_hhmm;
-use gpui::{prelude::FluentBuilder, Radians};
-use std::{f32::consts::PI, rc::Rc};
-
-use gpui::{div, px, relative, App, IntoElement, ParentElement, RenderOnce, Styled, Window};
-use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
 
 #[derive(IntoElement)]
 pub struct MessageBubble {
@@ -57,20 +60,20 @@ impl RenderOnce for MessageBubble {
             .when(!is_self, |t| t.ml_neg_1())
             .child(
                 Icon::default()
-                    .w(px(10.0))
-                    .h(px(10.0))
-                    .path("bubble_arrow_left.svg")
+                    .w(crate::ui::constants::message_bubble_arrow_icon_size())
+                    .h(crate::ui::constants::message_bubble_arrow_icon_size())
+                    .path(crate::ui::constants::message_bubble_arrow_path())
                     .rotate(if is_self { Radians(0.) } else { Radians(PI) }),
             );
 
         let colored_bubble = div()
-            .px_3()
-            .py_2()
+            .px(crate::ui::constants::message_bubble_inner_padding_x())
+            .py(crate::ui::constants::message_bubble_inner_padding_y())
             .rounded(crate::ui::constants::bubble_radius())
             .bg(bubble_bg_color)
             .text_color(bubble_text_color)
             .text_sm()
-            .line_height(relative(1.6))
+            .line_height(relative(crate::ui::constants::message_bubble_line_height()))
             .child(
                 div()
                     .max_w(crate::ui::constants::bubble_max_width())
@@ -85,48 +88,52 @@ impl RenderOnce for MessageBubble {
             .child(arrow_icon)
             .child(colored_bubble);
 
-        div().w_full().px_5().py_2().child(
-            div()
-                .flex()
-                .w_full()
-                .when(is_self, |this| this.flex_row_reverse())
-                .gap_3()
-                .child(
-                    crate::ui::base::avatar::Avatar::new(crate::ui::avatar::avatar_for_key(
-                        &self.message.sender_id,
-                    ))
-                    .w(crate::ui::constants::avatar_small())
-                    .h(crate::ui::constants::avatar_small())
-                    .rounded(crate::ui::constants::avatar_small_radius()),
-                )
-                .child(
-                    v_flex()
-                        .gap_1p5()
-                        .when(is_self, |this| this.items_end())
-                        .when(self.is_group && !is_self, |this| this.items_start())
-                        .child(
-                            h_flex()
-                                .gap_2()
-                                .when(is_self, |this| this.flex_row_reverse())
-                                .when(self.is_group && !is_self, |this| {
-                                    this.child(
+        div()
+            .w_full()
+            .px(crate::ui::constants::message_bubble_outer_padding_x())
+            .py(crate::ui::constants::message_bubble_outer_padding_y())
+            .child(
+                div()
+                    .flex()
+                    .w_full()
+                    .when(is_self, |this| this.flex_row_reverse())
+                    .gap(crate::ui::constants::message_bubble_gap_avatar_content())
+                    .child(
+                        crate::ui::base::avatar::Avatar::new(crate::ui::avatar::avatar_for_key(
+                            &self.message.sender_id,
+                        ))
+                        .w(crate::ui::constants::avatar_small())
+                        .h(crate::ui::constants::avatar_small())
+                        .rounded(crate::ui::constants::avatar_small_radius()),
+                    )
+                    .child(
+                        v_flex()
+                            .gap(crate::ui::constants::message_bubble_gap_header_bubble())
+                            .when(is_self, |this| this.items_end())
+                            .when(self.is_group && !is_self, |this| this.items_start())
+                            .child(
+                                h_flex()
+                                    .gap_2()
+                                    .when(is_self, |this| this.flex_row_reverse())
+                                    .when(self.is_group && !is_self, |this| {
+                                        this.child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.muted_foreground)
+                                                .font_weight(gpui::FontWeight::MEDIUM)
+                                                .child(self.message.sender_name.clone()),
+                                        )
+                                    })
+                                    .child(
                                         div()
                                             .text_xs()
                                             .text_color(theme.muted_foreground)
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .child(self.message.sender_name.clone()),
-                                    )
-                                })
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(theme.muted_foreground)
-                                        .child(time_str),
-                                ),
-                        )
-                        // [修改] 这里替换为新的包裹容器
-                        .child(bubble_and_arrow_wrapper),
-                ),
-        )
+                                            .child(time_str),
+                                    ),
+                            )
+                            // [修改] 这里替换为新的包裹容器
+                            .child(bubble_and_arrow_wrapper),
+                    ),
+            )
     }
 }

@@ -2,8 +2,8 @@ use gpui::{px, App, AppContext, Bounds, Size, WindowBounds, WindowKind, WindowOp
 use gpui_component::{Root, TitleBar};
 
 use crate::app::actions::{OpenChatWindow, SelectSession, ToolbarClicked};
-use crate::app::state::ChatStore;
-use crate::app::state::{Preferences, WeixinApp};
+use crate::app::config::Preferences;
+use crate::app::state::{ChatStore, WeixinApp};
 use crate::components::{ChatWindow, SettingsWindow};
 use crate::ui::theme::{Theme, ThemeMode};
 /// 应用级初始化：注册组件库、主题等。

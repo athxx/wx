@@ -41,6 +41,7 @@ impl Avatar {
         self
     }
 
+    #[allow(dead_code)]
     pub fn size(mut self, size: impl Into<Pixels>) -> Self {
         self.size = size.into();
         self
@@ -56,11 +57,12 @@ impl Avatar {
         self
     }
 
-    pub fn h(mut self, _h: impl Into<Pixels>) -> Self {
+    pub fn h(self, _h: impl Into<Pixels>) -> Self {
         // We assume width = height for avatars
         self
     }
 
+    #[allow(dead_code)]
     pub fn src(mut self, src: impl Into<SharedString>) -> Self {
         self.src = Some(src.into());
         self

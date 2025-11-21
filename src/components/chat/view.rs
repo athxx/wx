@@ -12,10 +12,7 @@ use std::rc::Rc;
 
 use crate::models::{ChatSession, Message};
 use crate::ui::theme::Theme;
-use crate::{
-    components::chat::input::{ChatInput, ChatInputEvent},
-    ui::constants,
-};
+use crate::components::chat::input::{ChatInput, ChatInputEvent};
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
@@ -103,6 +100,23 @@ impl ChatArea {
             cx.notify();
         }
     }
+
+    pub fn handle_new_message(
+        &mut self,
+        contact_id: &str,
+        message: Message,
+        cx: &mut Context<Self>,
+    ) {
+        let current_id = self
+            .current_session
+            .as_ref()
+            .map(|s| s.contact.id.clone());
+
+        if current_id.as_deref() == Some(contact_id) {
+            self.add_message(message, cx);
+        }
+    }
+
     /// 测量单条消息的高度
     fn measure_message(
         &self,
@@ -114,29 +128,29 @@ impl ChatArea {
         // 1. 获取与 MessageBubble 一致的布局常量
         let avatar_size = crate::ui::constants::avatar_small();
         let bubble_max_width = crate::ui::constants::bubble_max_width();
-        // [新增] 箭头的宽度占位，需要与 message_bubble.rs 中的设置一致 (例如 6px)
-        let arrow_placeholder_width = px(6.0);
+        // [新增] 箭头的宽度占位，需要与 message_bubble.rs 中的设置一致
+        let arrow_placeholder_width = crate::ui::constants::message_bubble_arrow_width();
 
         // 2. 构造布局代理 (Layout Proxy)
 
         // 模拟 Avatar 占位
         let avatar_placeholder = div().w(avatar_size).h(avatar_size);
 
-        // 模拟 Header (名字+时间) 占位，高度约 16px
-        let header_placeholder = div().h(px(16.0)).w_full();
+        // 模拟 Header (名字+时间) 占位
+        let header_placeholder = div().h(crate::ui::constants::message_bubble_header_height()).w_full();
 
         // 模拟消息气泡文本内容
         let content_proxy = div()
             .max_w(bubble_max_width)
             .whitespace_normal() // 关键：允许文本换行
             .text_sm() // 关键：字体大小必须一致
-            .line_height(relative(1.6)) // 关键：行高必须一致
+            .line_height(relative(crate::ui::constants::message_bubble_line_height())) // 关键：行高必须一致
             .child(message.content.clone());
 
         // 模拟气泡内边距
         let bubble_inner_padding = div()
-            .px(px(12.)) // px_3
-            .py(px(8.)) // py_2
+            .px(crate::ui::constants::message_bubble_inner_padding_x())
+            .py(crate::ui::constants::message_bubble_inner_padding_y())
             .child(content_proxy);
 
         // [新增] 模拟箭头和气泡的包裹容器
@@ -146,23 +160,23 @@ impl ChatArea {
             .flex()
             .items_center()
             // 箭头的占位符
-            .child(div().w(arrow_placeholder_width).h(px(10.)).flex_none())
+            .child(div().w(arrow_placeholder_width).h(crate::ui::constants::message_bubble_arrow_height()).flex_none())
             // 气泡本体
             .child(bubble_inner_padding);
 
         // 组装整体结构
         let layout_proxy = div()
             .w_full()
-            .px(px(20.)) // px_5 outer padding
-            .py(px(8.)) // py_2 outer padding
+            .px(crate::ui::constants::message_bubble_outer_padding_x())
+            .py(crate::ui::constants::message_bubble_outer_padding_y())
             .child(
                 div()
                     .flex()
-                    .gap(px(12.)) // gap_3 between avatar and content
+                    .gap(crate::ui::constants::message_bubble_gap_avatar_content())
                     .child(avatar_placeholder)
                     .child(
                         gpui_component::v_flex()
-                            .gap(px(6.)) // gap_1p5 between header and bubble
+                            .gap(crate::ui::constants::message_bubble_gap_header_bubble())
                             .child(header_placeholder)
                             // [修改] 使用新的包含箭头的代理
                             .child(bubble_and_arrow_proxy),
@@ -321,7 +335,7 @@ impl Render for ChatArea {
                 cx.entity().clone(),
                 "chat-messages",
                 self.item_sizes.clone(),
-                move |view, visible_range, _window, cx| {
+                move |view, visible_range, _window, _cx| {
                     let Some(session) = &view.current_session else {
                         return Vec::new();
                     };

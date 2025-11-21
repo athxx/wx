@@ -1,6 +1,6 @@
 use gpui::{
-    div, prelude::FluentBuilder, px, relative, rgb, AppContext, Context, Entity, EventEmitter,
-    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
+    div, prelude::FluentBuilder, relative, rgb, AppContext, Context, Entity, EventEmitter,
+    IntoElement, ParentElement, Render, Styled, Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
@@ -41,7 +41,7 @@ impl ChatInput {
 
 impl Render for ChatInput {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = cx.theme();
+        let _theme = cx.theme();
         let content = self.input_state.read(cx).value();
         let is_empty = content.trim().is_empty();
         let weixin_colors = crate::ui::theme::Theme::weixin_colors(cx);

@@ -1,18 +1,16 @@
-use gpui::{
-    div, prelude::FluentBuilder as _, App, AppContext, Context, Entity, InteractiveElement,
-    IntoElement, ParentElement, Render, Styled, Window, WindowControlArea,
-};
-use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
+use gpui::{
+    div, prelude::FluentBuilder, App, AppContext, Context, Entity, InteractiveElement, IntoElement,
+    ParentElement, Render, Styled, Window, WindowControlArea,
+};
+use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
+
 use crate::app::state::{ChatStore, ChatStoreEvent};
-use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
-use crate::models::ChatSession;
 use crate::ui::theme::Theme;
 
 use super::{ChatArea, ChatAreaEvent};
-use crate::models::Message;
 // 记录当前已打开的聊天窗口，保证同一个会话 ID 只能同时打开一个窗口。
 static OPEN_CHAT_WINDOWS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
@@ -28,7 +26,7 @@ pub struct ChatWindow {
     chat_area: Entity<ChatArea>,
     chat_title: String,
     contact_id: String,
-    store: Entity<ChatStore>,
+    // store: Entity<ChatStore>, // unused
 }
 
 impl ChatWindow {
@@ -71,14 +69,14 @@ impl ChatWindow {
         });
 
         // 2. 监听 ChatArea 的发送动作 -> 调用 Store
-        let store_clone = store.clone();
-        let contact_id_clone = contact_id.clone();
+        let store_for_send = store.clone();
+        let contact_id_for_send = contact_id.clone();
         cx.subscribe(
             &chat_area,
             move |_, _, event: &ChatAreaEvent, cx| match event {
                 ChatAreaEvent::SendMessage(content) => {
-                    store_clone.update(cx, |s, cx| {
-                        s.send_message(contact_id_clone.clone(), content.clone(), cx);
+                    store_for_send.update(cx, |s, cx| {
+                        s.send_message(contact_id_for_send.clone(), content.clone(), cx);
                     });
                 }
                 _ => {}
@@ -94,12 +92,9 @@ impl ChatWindow {
                     contact_id,
                     message,
                 } => {
-                    // 只有当消息属于当前窗口的联系人时才更新
-                    if contact_id == &this.contact_id {
-                        this.chat_area.update(cx, |area, cx| {
-                            area.add_message(message.clone(), cx);
-                        });
-                    }
+                    this.chat_area.update(cx, |area, cx| {
+                        area.handle_new_message(contact_id, message.clone(), cx);
+                    });
                 }
             }
         })
@@ -109,7 +104,7 @@ impl ChatWindow {
             chat_area,
             chat_title,
             contact_id,
-            store,
+            // store,
         }
     }
 

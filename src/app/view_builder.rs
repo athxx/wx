@@ -5,7 +5,7 @@ use gpui::{
     div, px, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
     WindowControlArea,
 };
-use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme, Icon, Sizable};
+use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme, Icon};
 
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -171,7 +171,7 @@ impl WeixinApp {
             .child(right_header)
     }
 
-    fn render_main_content(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn render_main_content(&self, _cx: &Context<Self>) -> impl IntoElement {
         h_flex()
             .flex_1()
             .w_full()

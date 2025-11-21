@@ -31,11 +31,13 @@ impl IconButton {
         }
     }
 
+    #[allow(dead_code)]
     pub fn icon_size(mut self, size: impl Into<Pixels>) -> Self {
         self.icon_size = size.into();
         self
     }
 
+    #[allow(dead_code)]
     pub fn padding(mut self, padding: impl Into<Pixels>) -> Self {
         self.padding = padding.into();
         self
@@ -56,16 +58,19 @@ impl IconButton {
         self
     }
 
+    #[allow(dead_code)]
     pub fn tooltip(mut self, tooltip: impl Into<SharedString>) -> Self {
         self.tooltip = Some(tooltip.into());
         self
     }
 
+    #[allow(dead_code)]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
         self
     }
 
+    #[allow(dead_code)]
     pub fn on_click(
         mut self,
         handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,

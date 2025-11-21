@@ -1,6 +1,6 @@
 use gpui::{
-    div, rgb, white, App, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString,
-    Styled, Window, WindowControlArea,
+    div, rgb, white, App, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled,
+    Window, WindowControlArea,
 };
 use gpui_component::{h_flex, ActiveTheme, Icon, Sizable};
 

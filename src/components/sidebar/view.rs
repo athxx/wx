@@ -109,6 +109,23 @@ impl ToolBar {
             )
     }
 
+    fn render_menu_item_helper<F, C>(
+        id: &'static str,
+        label: &'static str,
+        is_hovered: bool,
+        on_hover: F,
+        on_click: C,
+    ) -> impl IntoElement
+    where
+        F: Fn(bool, &mut App) + Clone + 'static,
+        C: Fn(&gpui::MouseDownEvent, &mut Window, &mut App) + 'static,
+    {
+        crate::ui::base::menu_item::MenuItem::new(id, label)
+            .hovered(is_hovered)
+            .on_hover(on_hover)
+            .on_click(on_click)
+    }
+
     fn render_phone_button(
         &self,
         _window: &mut Window,
@@ -177,44 +194,34 @@ impl ToolBar {
                         .gap_1()
                         .p_2()
                         .bg(theme.popover)
-                        .child(
-                            crate::ui::base::menu_item::MenuItem::new(
-                                "phone-video-call",
-                                "视频通话",
-                            )
-                            .hovered(video_hovered)
-                            .on_hover(set_video_hover)
-                            .on_click(cx.listener(move |_, _, window, cx| {
+                        .child(Self::render_menu_item_helper(
+                            "phone-video-call",
+                            "视频通话",
+                            video_hovered,
+                            set_video_hover,
+                            cx.listener(move |_, _, window, cx| {
                                 window.push_notification("视频通话功能开发中...", cx);
                                 cx.emit(gpui::DismissEvent);
-                                _ = toolbar_for_video_click.update(
-                                    cx,
-                                    |this: &mut ToolBar, cx| {
-                                        this.phone_hover = PhonePopoverHover::None;
-                                        cx.notify();
-                                    },
-                                );
-                            })),
-                        )
-                        .child(
-                            crate::ui::base::menu_item::MenuItem::new(
-                                "phone-voice-call",
-                                "语音通话",
-                            )
-                            .hovered(voice_hovered)
-                            .on_hover(set_voice_hover)
-                            .on_click(cx.listener(move |_, _, window, cx| {
+                                _ = toolbar_for_video_click.update(cx, |this: &mut ToolBar, cx| {
+                                    this.phone_hover = PhonePopoverHover::None;
+                                    cx.notify();
+                                });
+                            }),
+                        ))
+                        .child(Self::render_menu_item_helper(
+                            "phone-voice-call",
+                            "语音通话",
+                            voice_hovered,
+                            set_voice_hover,
+                            cx.listener(move |_, _, window, cx| {
                                 window.push_notification("语音通话功能开发中...", cx);
                                 cx.emit(gpui::DismissEvent);
-                                _ = toolbar_for_voice_click.update(
-                                    cx,
-                                    |this: &mut ToolBar, cx| {
-                                        this.phone_hover = PhonePopoverHover::None;
-                                        cx.notify();
-                                    },
-                                );
-                            })),
-                        )
+                                _ = toolbar_for_voice_click.update(cx, |this: &mut ToolBar, cx| {
+                                    this.phone_hover = PhonePopoverHover::None;
+                                    cx.notify();
+                                });
+                            }),
+                        ))
                 }),
         )
     }
@@ -358,14 +365,12 @@ impl ToolBar {
                             .p_1()
                             .rounded(crate::ui::constants::radius_md())
                             .shadow_md()
-                            .child(
-                                crate::ui::base::menu_item::MenuItem::new(
-                                    "menu-video-live",
-                                    "视频号直播伴侣",
-                                )
-                                .hovered(video_live_hovered)
-                                .on_hover(set_video_live_hover)
-                                .on_click(cx.listener(move |_, _, window, cx| {
+                            .child(Self::render_menu_item_helper(
+                                "menu-video-live",
+                                "视频号直播伴侣",
+                                video_live_hovered,
+                                set_video_live_hover,
+                                cx.listener(move |_, _, window, cx| {
                                     window.push_notification("视频号直播伴侣功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
                                     _ = toolbar_for_video_live_click.update(
@@ -375,16 +380,14 @@ impl ToolBar {
                                             cx.notify();
                                         },
                                     );
-                                })),
-                            )
-                            .child(
-                                crate::ui::base::menu_item::MenuItem::new(
-                                    "menu-chat-files",
-                                    "聊天文件",
-                                )
-                                .hovered(chat_files_hovered)
-                                .on_hover(set_chat_files_hover)
-                                .on_click(cx.listener(move |_, _, window, cx| {
+                                }),
+                            ))
+                            .child(Self::render_menu_item_helper(
+                                "menu-chat-files",
+                                "聊天文件",
+                                chat_files_hovered,
+                                set_chat_files_hover,
+                                cx.listener(move |_, _, window, cx| {
                                     window.push_notification("聊天文件功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
                                     _ = toolbar_for_chat_files_click.update(
@@ -394,16 +397,14 @@ impl ToolBar {
                                             cx.notify();
                                         },
                                     );
-                                })),
-                            )
-                            .child(
-                                crate::ui::base::menu_item::MenuItem::new(
-                                    "menu-chat-history",
-                                    "聊天记录管理",
-                                )
-                                .hovered(chat_history_hovered)
-                                .on_hover(set_chat_history_hover)
-                                .on_click(cx.listener(move |_, _, window, cx| {
+                                }),
+                            ))
+                            .child(Self::render_menu_item_helper(
+                                "menu-chat-history",
+                                "聊天记录管理",
+                                chat_history_hovered,
+                                set_chat_history_hover,
+                                cx.listener(move |_, _, window, cx| {
                                     window.push_notification("聊天记录管理功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
                                     _ = toolbar_for_chat_history_click.update(
@@ -413,16 +414,14 @@ impl ToolBar {
                                             cx.notify();
                                         },
                                     );
-                                })),
-                            )
-                            .child(
-                                crate::ui::base::menu_item::MenuItem::new(
-                                    "menu-lock",
-                                    "锁定",
-                                )
-                                .hovered(lock_hovered)
-                                .on_hover(set_lock_hover)
-                                .on_click(cx.listener(move |_, _, window, cx| {
+                                }),
+                            ))
+                            .child(Self::render_menu_item_helper(
+                                "menu-lock",
+                                "锁定",
+                                lock_hovered,
+                                set_lock_hover,
+                                cx.listener(move |_, _, window, cx| {
                                     window.push_notification("锁定功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
                                     _ = toolbar_for_lock_click.update(
@@ -432,16 +431,14 @@ impl ToolBar {
                                             cx.notify();
                                         },
                                     );
-                                })),
-                            )
-                            .child(
-                                crate::ui::base::menu_item::MenuItem::new(
-                                    "menu-feedback",
-                                    "意见反馈",
-                                )
-                                .hovered(feedback_hovered)
-                                .on_hover(set_feedback_hover)
-                                .on_click(cx.listener(move |_, _, window, cx| {
+                                }),
+                            ))
+                            .child(Self::render_menu_item_helper(
+                                "menu-feedback",
+                                "意见反馈",
+                                feedback_hovered,
+                                set_feedback_hover,
+                                cx.listener(move |_, _, window, cx| {
                                     window.push_notification("意见反馈功能开发中...", cx);
                                     cx.emit(gpui::DismissEvent);
                                     _ = toolbar_for_feedback_click.update(
@@ -451,16 +448,14 @@ impl ToolBar {
                                             cx.notify();
                                         },
                                     );
-                                })),
-                            )
-                            .child(
-                                crate::ui::base::menu_item::MenuItem::new(
-                                    "menu-settings",
-                                    "设置",
-                                )
-                                .hovered(settings_hovered)
-                                .on_hover(set_settings_hover)
-                                .on_click(cx.listener(move |_, _, _window, cx| {
+                                }),
+                            ))
+                            .child(Self::render_menu_item_helper(
+                                "menu-settings",
+                                "设置",
+                                settings_hovered,
+                                set_settings_hover,
+                                cx.listener(move |_, _, _window, cx| {
                                     crate::app::WeixinApp::open_settings_window(cx);
                                     cx.emit(gpui::DismissEvent);
                                     _ = toolbar_for_settings_click.update(
@@ -470,8 +465,8 @@ impl ToolBar {
                                             cx.notify();
                                         },
                                     );
-                                })),
-                            )
+                                }),
+                            ))
                     }),
             )
     }

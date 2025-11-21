@@ -188,3 +188,39 @@ pub fn toolbar_button_padding_y() -> Pixels {
 pub fn toolbar_item_padding() -> Pixels {
     px(10.)
 }
+pub fn message_bubble_arrow_width() -> Pixels {
+    px(6.0)
+}
+pub fn message_bubble_arrow_height() -> Pixels {
+    px(10.0)
+}
+pub fn message_bubble_header_height() -> Pixels {
+    px(16.0)
+}
+pub fn message_bubble_inner_padding_x() -> Pixels {
+    px(12.0)
+}
+pub fn message_bubble_inner_padding_y() -> Pixels {
+    px(8.0)
+}
+pub fn message_bubble_outer_padding_x() -> Pixels {
+    px(20.0)
+}
+pub fn message_bubble_outer_padding_y() -> Pixels {
+    px(8.0)
+}
+pub fn message_bubble_gap_avatar_content() -> Pixels {
+    px(12.0)
+}
+pub fn message_bubble_gap_header_bubble() -> Pixels {
+    px(6.0)
+}
+pub fn message_bubble_arrow_icon_size() -> Pixels {
+    px(10.0)
+}
+pub fn message_bubble_arrow_path() -> &'static str {
+    "bubble_arrow_left.svg"
+}
+pub fn message_bubble_line_height() -> f32 {
+    1.6
+}

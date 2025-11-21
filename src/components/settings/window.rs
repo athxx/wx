@@ -1,4 +1,4 @@
-use crate::app::state::Preferences;
+use crate::app::config::Preferences;
 use crate::ui::theme::{Theme, ThemeMode};
 use crate::ui::composites::setting_card;
 use gpui::{DismissEvent, EventEmitter, *};
