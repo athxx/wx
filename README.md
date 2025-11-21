@@ -71,7 +71,7 @@ https://github.com/user-attachments/assets/7cb41bdf-2477-46e3-a679-94512f77ee0b
 ## Quick Start
 
 ```bash
-cargo run
+cargo run -r
 ```
 
 ## Build
@@ -88,6 +88,7 @@ cargo build --release
 ## License
 
 Learning project only
+
 
 
 
