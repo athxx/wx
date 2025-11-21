@@ -91,7 +91,7 @@ impl RenderOnce for MessageBubble {
                                     })
                                     .text_sm()
                                     .line_height(relative(1.6))
-                                    .child(self.message.content.clone()),
+                                    .child(div().max_w(crate::ui::constants::bubble_max_width()).whitespace_normal().child(self.message.content.clone())),
                             ),
                         ),
                 ),
