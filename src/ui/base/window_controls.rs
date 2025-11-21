@@ -62,13 +62,7 @@ impl RenderOnce for WindowControls {
             header = header.child(Self::window_button(
                 "win-btn-pin",
                 "nail.svg",
-                WindowControlArea::Min, // Wait, pin is not usually Min, but let's keep original behavior for now. Original code passed Min?
-                // In original code:
-                // header = header.child(window_button("win-btn-pin", "nail.svg", WindowControlArea::Min, theme));
-                // That seems wrong for a Pin button, but I should respect the original implementation unless I know what it's supposed to do.
-                // WindowControlArea::Min makes it minimize window? Maybe the pin button was a placeholder or mapped to min for some reason?
-                // Or maybe it triggers some custom action? But here it is using `window_control_area(control)`.
-                // Let's assume the original code is what is intended for now.
+                WindowControlArea::Min,
                 theme,
             ));
         }

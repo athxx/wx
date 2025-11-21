@@ -2,10 +2,10 @@ use gpui::{px, App, AppContext, Bounds, Size, WindowBounds, WindowKind, WindowOp
 use gpui_component::{Root, TitleBar};
 
 use crate::app::actions::{OpenChatWindow, SelectSession, ToolbarClicked};
+use crate::app::state::GlobalMainApp;
 use crate::app::state::{Preferences, WeixinApp};
 use crate::components::{ChatWindow, SettingsWindow};
 use crate::ui::theme::{Theme, ThemeMode};
-
 /// 应用级初始化：注册组件库、主题等。
 pub fn init_app(cx: &mut App) {
     // 初始化 gpui-component（类似 story::init）
@@ -47,7 +47,7 @@ pub fn open_main_window(cx: &mut App) {
 
     cx.open_window(options, |window, cx| {
         let app_view = WeixinApp::view(window, cx);
-
+        cx.set_global(GlobalMainApp(app_view.clone()));
         // 在 App 级别路由 SelectSession / ToolbarClicked 动作到 WeixinApp 实例，
         // 确保通过 window.dispatch_action 触发的动作能够被根 Workspace 处理。
         {

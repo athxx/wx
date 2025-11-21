@@ -165,7 +165,10 @@ impl ChatState {
         self.current_session = None;
     }
 }
+// 1. 定义一个全局结构体，用于持有主窗口的 Entity
+pub struct GlobalMainApp(pub Entity<WeixinApp>);
 
+impl gpui::Global for GlobalMainApp {}
 pub struct WeixinApp {
     pub toolbar: Entity<ToolBar>,
     pub session_list: Entity<SessionList>,
@@ -368,5 +371,45 @@ impl WeixinApp {
     /// Action: 工具栏点击，目前先简单打印，后续可以根据 item 做不同操作。
     pub fn on_action_toolbar_clicked(&mut self, action: &ToolbarClicked, _cx: &mut Context<Self>) {
         println!("Toolbar item clicked: {:?}", action.item);
+    }
+    pub fn handle_external_message(
+        &mut self,
+        contact_id: String,
+        content: String,
+        cx: &mut Context<Self>,
+    ) {
+        // A. 更新左侧会话列表的“最后一条消息”预览
+        self.session_list.update(cx, |list, cx| {
+            list.update_contact_last_message(&contact_id, content.clone(), cx);
+        });
+
+        // B. 如果主窗口当前正好也打开了这个会话，则需要把消息显示在右侧聊天区域
+        // 判断当前会话是否与消息所属联系人一致
+        let is_current_session = self
+            .chat_state
+            .current_session()
+            .map(|s| s.contact.id == contact_id)
+            .unwrap_or(false);
+
+        if is_current_session {
+            // 构造消息对象
+            let message = Message::new(
+                format!("msg-ext-{}", chrono::Utc::now().timestamp_millis()),
+                "self",
+                "我",
+                content.clone(),
+                true,
+            );
+
+            // 更新 UI (ChatArea)
+            self.chat_area.update(cx, |area, cx| {
+                area.add_message(message.clone(), cx);
+            });
+
+            // 更新内存数据 (ChatState)，防止切换回来后消失
+            if let Some(session) = &mut self.chat_state.current_session {
+                session.add_message(message);
+            }
+        }
     }
 }

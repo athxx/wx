@@ -6,12 +6,13 @@ use gpui_component::{h_flex, v_flex, ActiveTheme, Icon};
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
+use crate::app::state::GlobalMainApp;
 use crate::infra::memory_repos::{MemoryContactsRepo, MemorySessionsRepo};
 use crate::models::ChatSession;
 use crate::ui::theme::Theme;
 
-use super::ChatArea;
-
+use super::{ChatArea, ChatAreaEvent};
+use crate::models::Message;
 // 记录当前已打开的聊天窗口，保证同一个会话 ID 只能同时打开一个窗口。
 static OPEN_CHAT_WINDOWS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
@@ -57,7 +58,16 @@ impl ChatWindow {
         let mut chat_title = String::new();
 
         let chat_area = ChatArea::view(window, cx);
-
+        cx.subscribe(
+            &chat_area,
+            |this, _, event: &ChatAreaEvent, cx| match event {
+                ChatAreaEvent::SendMessage(content) => {
+                    this.handle_send_message(content.clone(), cx);
+                }
+                _ => {}
+            },
+        )
+        .detach();
         // 根据 contact_id 构造一个会话并挂到 ChatArea 上。
         if let Some(contact) = contacts_repo
             .get_all()
@@ -81,7 +91,32 @@ impl ChatWindow {
             contact_id,
         }
     }
+    fn handle_send_message(&mut self, content: String, cx: &mut Context<Self>) {
+        // 构造一条新消息 (模拟发送)
+        let message = Message::new(
+            format!("msg-{}", chrono::Utc::now().timestamp_millis()),
+            "self",
+            "我",
+            content.clone(),
+            true,
+        );
 
+        // 通知 ChatArea 更新 UI
+        self.chat_area.update(cx, |area, cx| {
+            area.add_message(message, cx);
+        });
+
+        if let Some(global_app) = cx.try_global::<GlobalMainApp>() {
+            let app_entity = global_app.0.clone();
+            let contact_id = self.contact_id.clone();
+            let content_sync = content.clone();
+
+            // 跨 View 更新：在主窗口的 Entity 上执行 update
+            cx.update_entity(&app_entity, move |app, cx| {
+                app.handle_external_message(contact_id, content_sync, cx);
+            });
+        }
+    }
     pub fn view(window: &mut Window, cx: &mut App, contact_id: String) -> Entity<Self> {
         cx.new(|cx| Self::new(window, cx, contact_id))
     }
@@ -135,9 +170,10 @@ impl Render for ChatWindow {
             .h_full()
             .flex_col()
             .items_center()
-            .child(crate::ui::base::window_controls::WindowControls::new()
-                .maximized(is_maximized)
-                .show_pin(false)
+            .child(
+                crate::ui::base::window_controls::WindowControls::new()
+                    .maximized(is_maximized)
+                    .show_pin(false),
             )
             .child(crate::ui::composites::chat_header_actions::ChatHeaderActions::new());
 
