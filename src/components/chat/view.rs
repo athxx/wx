@@ -72,12 +72,22 @@ impl ChatArea {
 
     pub fn set_session(&mut self, session: Option<ChatSession>, cx: &mut Context<Self>) {
         self.current_session = session;
+        if let Some(session) = &self.current_session {
+            self.scroll_handle.scroll_to_item(
+                session.messages.len().saturating_sub(1),
+                gpui::ScrollStrategy::Top,
+            );
+        }
         cx.notify();
     }
 
     pub fn add_message(&mut self, message: Message, cx: &mut Context<Self>) {
         if let Some(session) = &mut self.current_session {
             session.add_message(message);
+            self.scroll_handle.scroll_to_item(
+                session.messages.len().saturating_sub(1),
+                gpui::ScrollStrategy::Top,
+            );
             cx.notify();
         }
     }
@@ -143,6 +153,8 @@ impl Render for ChatArea {
         let border_color = theme.border;
         let bg_color = weixin_colors.chat_area_bg;
 
+        let window_width = window.viewport_size().width;
+
         // 没有选中会话时：右侧只显示居中的微信图标，不显示消息和输入框。
         if self.current_session.is_none() {
             let icon_color = no_session_text_color.opacity(0.35);
@@ -168,11 +180,8 @@ impl Render for ChatArea {
             let session = self.current_session.as_ref().unwrap();
             let is_group = session.contact.is_group;
 
-            // 仿照 `list.rs` 的做法，提前测量每个消息气泡的真实高度，
-            // 然后把测量结果作为 `item_sizes` 交给 VirtualList。
             let available_space = size(
-                // 宽度按气泡最大宽度来测量，这样可以正确计算换行后的高度。
-                AvailableSpace::Definite(crate::ui::constants::bubble_max_width()),
+                AvailableSpace::Definite(window_width),
                 AvailableSpace::MinContent,
             );
 
@@ -186,8 +195,8 @@ impl Render for ChatArea {
                                 .group(is_group);
                         let mut el = div().w_full().child(bubble).into_any_element();
                         let bubble_size = el.layout_as_root(available_space, window, cx);
-                        // 为了避免底部消息被裁剪，给每一项略微增加 4px 高度作为安全边距。
-                        gpui::size(bubble_size.width, bubble_size.height + px(4.))
+
+                        gpui::size(bubble_size.width, bubble_size.height)
                     })
                     .collect::<Vec<_>>(),
             );
@@ -205,15 +214,17 @@ impl Render for ChatArea {
                         .map(|ix| {
                             // 这里直接复用原来的气泡布局，不再手动设置高度，
                             // 高度由 VirtualList 根据预先测量的 item_sizes 控制。
-                            crate::ui::composites::message_bubble::MessageBubble::new(
+                            let bubble = crate::ui::composites::message_bubble::MessageBubble::new(
                                 session.messages[ix].clone(),
                             )
-                            .group(is_group)
+                            .group(is_group);
+
+                            div().w_full().child(bubble).into_any_element()
                         })
                         .collect()
                 },
             )
-            .pb_10()
+            .pb_2()
             .track_scroll(&self.scroll_handle)
             .into_any_element()
         };

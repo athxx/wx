@@ -1,12 +1,12 @@
 use gpui::{
-    div, rgb, AppContext, Context, Entity, EventEmitter, InteractiveElement, IntoElement,
-    ParentElement, Render, Styled, Window,
+    div, prelude::FluentBuilder, rgb, AppContext, Context, Entity, EventEmitter,
+    InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
 };
 use gpui_component::{
     button::{Button, ButtonVariants},
     h_flex,
     input::{Input, InputState},
-    v_flex, ActiveTheme,
+    v_flex, ActiveTheme, Disableable,
 };
 
 pub struct ChatInput {
@@ -31,7 +31,7 @@ impl ChatInput {
             return;
         }
 
-        cx.emit(ChatInputEvent::SendMessage(content.to_string()));
+        cx.emit(ChatInputEvent::SendMessage(content.trim().to_string()));
 
         self.input_state.update(cx, |state, cx| {
             state.set_value("", window, cx);
@@ -42,9 +42,13 @@ impl ChatInput {
 impl Render for ChatInput {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let content = self.input_state.read(cx).value();
+        let is_empty = content.trim().is_empty();
+        let weixin_colors = crate::ui::theme::Theme::weixin_colors(cx);
 
         v_flex()
             .size_full()
+            .flex_col()
             .child(
                 div()
                     .w_full()
@@ -64,15 +68,24 @@ impl Render for ChatInput {
             .child(
                 div().w_full().flex().justify_end().px_4().pb_4().child(
                     Button::new("send")
+                        .disabled(is_empty)
+                        .primary()
+                        .border_color(gpui::transparent_black())
+                        .when(is_empty, |this| {
+                            this.bg(weixin_colors.send_button_disabled_bg)
+                        })
                         .child(
                             h_flex()
                                 .text_sm()
                                 .items_center()
-                                .text_color(rgb(0xFFFFFF))
+                                .text_color(if is_empty {
+                                    weixin_colors.send_button_disabled_text
+                                } else {
+                                    rgb(0xFFFFFF).into()
+                                })
                                 .child("发送(S)"),
                         )
                         .w_24()
-                        .primary()
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.send_message(window, cx);
                         })),

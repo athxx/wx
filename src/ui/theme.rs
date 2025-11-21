@@ -24,6 +24,8 @@ pub struct WeixinThemeColors {
     pub storage_path_text: Hsla,
     pub input_field_bg: Hsla,
     pub input_field_focus: Hsla,
+    pub send_button_disabled_bg: Hsla,
+    pub send_button_disabled_text: Hsla,
 }
 
 impl WeixinThemeColors {
@@ -48,6 +50,8 @@ impl WeixinThemeColors {
             storage_path_text: rgb(0x576B95).into(),
             input_field_bg: rgb(0xFFFFFF).into(),
             input_field_focus: rgb(0x44D087).into(),
+            send_button_disabled_bg: rgb(0xE1E1E1).into(),
+            send_button_disabled_text: rgb(0x9D9D9D).into(),
         }
     }
 
@@ -72,6 +76,8 @@ impl WeixinThemeColors {
             storage_path_text: rgb(0x7D90A9).into(),
             input_field_bg: rgb(0x2E2E2E).into(),
             input_field_focus: rgb(0x0E9A51).into(),
+            send_button_disabled_bg: rgb(0x252525).into(),
+            send_button_disabled_text: rgb(0x575757).into(),
         }
     }
 }

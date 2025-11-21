@@ -52,6 +52,7 @@ impl RenderOnce for MessageBubble {
                         .gap_1p5()
                         .max_w(crate::ui::constants::bubble_max_width())
                         .when(is_self, |this| this.items_end())
+                        .when(self.is_group && !is_self, |this| this.items_start())
                         .child(
                             h_flex()
                                 .gap_2()
@@ -73,7 +74,7 @@ impl RenderOnce for MessageBubble {
                                 ),
                         )
                         .child(
-                            div().relative().child(
+                            div().relative().flex().child(
                                 div()
                                     .px_3()
                                     .py_2()

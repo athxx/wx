@@ -84,9 +84,11 @@ impl RenderOnce for SessionRow {
                             .whitespace_nowrap()
                             .text_ellipsis()
                             .child({
-                                let message = self.contact
+                                let message = self
+                                    .contact
                                     .last_message
-                                    .clone()
+                                    .as_ref()
+                                    .map(|m| m.lines().next().unwrap_or("").to_string())
                                     .unwrap_or_else(|| "暂无消息".to_string());
                                 if self.contact.is_group {
                                     if let Some(sender) = &self.contact.last_sender_name {
