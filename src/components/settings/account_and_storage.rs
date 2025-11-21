@@ -1,5 +1,5 @@
-use crate::ui::theme::Theme;
 use crate::ui::composites::setting_card;
+use crate::ui::theme::Theme;
 use gpui::{div, px, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Styled};
 use gpui_component::switch::Switch;
 use gpui_component::{h_flex, input::Input, v_flex, ActiveTheme, Sizable, Size};
@@ -36,10 +36,15 @@ impl SettingsWindow {
                         .child(div().text_xs().text_color(muted).child("H1548772930")),
                 );
 
-            let header_row = setting_card::setting_row().py_3().child(avatar_and_info).child(
-                crate::ui::base::settings_button::SettingsButton::new("settings-account-logout")
+            let header_row = setting_card::setting_row()
+                .py_3()
+                .child(avatar_and_info)
+                .child(
+                    crate::ui::base::settings_button::SettingsButton::new(
+                        "settings-account-logout",
+                    )
                     .label("退出登录"),
-            );
+                );
 
             let auto_login_row = setting_card::setting_row()
                 .py_3()
@@ -89,8 +94,10 @@ impl SettingsWindow {
                 .py_4()
                 .child(div().text_sm().text_color(foreground).child("存储空间"))
                 .child(
-                    crate::ui::base::settings_button::SettingsButton::new("settings-storage-manage")
-                        .label("管理"),
+                    crate::ui::base::settings_button::SettingsButton::new(
+                        "settings-storage-manage",
+                    )
+                    .label("管理"),
                 );
 
             let path_value_color = weixin_colors.storage_path_text;
@@ -142,7 +149,8 @@ impl SettingsWindow {
                                         .appearance(false)
                                         .focus_bordered(false)
                                         .bordered(false)
-                                        .text_sm()
+                                        .text_xs()
+                                        .font_weight(gpui::FontWeight::SEMIBOLD)
                                         .text_color(foreground)
                                         .w_full(),
                                 ),

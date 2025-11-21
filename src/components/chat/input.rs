@@ -1,5 +1,5 @@
 use gpui::{
-    div, prelude::FluentBuilder, rgb, AppContext, Context, Entity, EventEmitter,
+    div, prelude::FluentBuilder, px, relative, rgb, AppContext, Context, Entity, EventEmitter,
     InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
 };
 use gpui_component::{
@@ -57,13 +57,18 @@ impl Render for ChatInput {
                     .child(crate::ui::composites::chat_toolbar::ChatToolbar::new()),
             )
             .child(
-                div().flex_1().w_full().px_2().overflow_hidden().child(
-                    Input::new(&self.input_state)
-                        .text_sm()
-                        .appearance(false)
-                        .w_full()
-                        .h_full(),
-                ),
+                div()
+                    .flex_1()
+                    .w_full()
+                    .px_2()
+                    .overflow_hidden()
+                    .text_sm()
+                    .child(
+                        Input::new(&self.input_state)
+                            .line_height(relative(1.6))
+                            .appearance(false)
+                            .size_full(),
+                    ),
             )
             .child(
                 div().w_full().flex().justify_end().px_4().pb_4().child(
