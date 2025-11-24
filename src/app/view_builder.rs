@@ -47,12 +47,13 @@ impl WeixinApp {
 
     fn render_user_avatar(&self, cx: &Context<Self>) -> impl IntoElement {
         use crate::ui::constants as UI;
-        let weixin_colors = Theme::weixin_colors(cx);
+        // let weixin_colors = Theme::weixin_colors(cx);
         div()
             .window_control_area(WindowControlArea::Drag)
             .w(UI::toolbar_width())
             .h_full()
-            .bg(weixin_colors.toolbar_bg)
+            // 工具栏做透明效果：如果需要恢复原来的不透明样式，取消下一行注释即可
+            // .bg(weixin_colors.toolbar_bg)
             .flex()
             .items_center()
             .justify_center()

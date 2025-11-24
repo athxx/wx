@@ -474,10 +474,10 @@ impl ToolBar {
 
 impl Render for ToolBar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let weixin_colors = Theme::weixin_colors(cx);
+        // let weixin_colors = Theme::weixin_colors(cx);
 
         v_flex()
-            .bg(weixin_colors.toolbar_bg)
+            // .bg(weixin_colors.toolbar_bg)
             .w(crate::ui::constants::toolbar_width())
             .h_full()
             .items_center()
