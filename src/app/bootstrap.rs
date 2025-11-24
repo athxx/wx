@@ -1,4 +1,7 @@
-use gpui::{px, App, AppContext, Bounds, Size, WindowBounds, WindowKind, WindowOptions};
+use gpui::{
+    px, App, AppContext, Bounds, Size, WindowBackgroundAppearance, WindowBounds, WindowKind,
+    WindowOptions,
+};
 use gpui_component::{Root, TitleBar};
 
 use crate::app::actions::{OpenChatWindow, SelectSession, ToolbarClicked};
@@ -37,6 +40,7 @@ pub fn open_main_window(cx: &mut App) {
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(window_bounds)),
         titlebar: Some(TitleBar::title_bar_options()),
+        window_background: WindowBackgroundAppearance::Transparent,
         window_min_size: Some(Size {
             width: crate::ui::constants::app_window_min_width(),
             height: crate::ui::constants::app_window_min_height(),

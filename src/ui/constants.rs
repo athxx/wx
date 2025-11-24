@@ -203,6 +203,10 @@ pub fn message_bubble_inner_padding_x() -> Pixels {
 pub fn message_bubble_inner_padding_y() -> Pixels {
     px(8.0)
 }
+/// 箭头相对于气泡内部顶部的偏移，用于让箭头精确落在第一行的几何中心附近
+pub fn message_bubble_arrow_offset_y() -> Pixels {
+    px(14.0)
+}
 pub fn message_bubble_outer_padding_x() -> Pixels {
     px(20.0)
 }

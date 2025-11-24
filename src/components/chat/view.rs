@@ -1,7 +1,6 @@
 use gpui::{
-    div, px, relative, size, App, AppContext, AvailableSpace, Context, Entity, EventEmitter,
-    InteractiveElement, IntoElement, ParentElement, Pixels, Render, Styled, Window,
-    WindowControlArea,
+    div, px, App, AppContext, Context, Entity, EventEmitter, InteractiveElement, IntoElement,
+    ParentElement, Pixels, Render, Styled, Window, WindowControlArea,
 };
 use gpui_component::{
     h_flex,
@@ -10,9 +9,9 @@ use gpui_component::{
 };
 use std::rc::Rc;
 
+use crate::components::chat::input::{ChatInput, ChatInputEvent};
 use crate::models::{ChatSession, Message};
 use crate::ui::theme::Theme;
-use crate::components::chat::input::{ChatInput, ChatInputEvent};
 
 pub struct ChatArea {
     current_session: Option<ChatSession>,
@@ -107,10 +106,7 @@ impl ChatArea {
         message: Message,
         cx: &mut Context<Self>,
     ) {
-        let current_id = self
-            .current_session
-            .as_ref()
-            .map(|s| s.contact.id.clone());
+        let current_id = self.current_session.as_ref().map(|s| s.contact.id.clone());
 
         if current_id.as_deref() == Some(contact_id) {
             self.add_message(message, cx);
@@ -125,78 +121,12 @@ impl ChatArea {
         window: &mut Window,
         cx: &mut App,
     ) -> gpui::Size<Pixels> {
-        // 1. 获取与 MessageBubble 一致的布局常量
-        let avatar_size = crate::ui::constants::avatar_small();
-        let bubble_max_width = crate::ui::constants::bubble_max_width();
-        // [新增] 箭头的宽度占位，需要与 message_bubble.rs 中的设置一致
-        let arrow_placeholder_width = crate::ui::constants::message_bubble_arrow_width();
-
-        // 2. 构造布局代理 (Layout Proxy)
-
-        // 模拟 Avatar 占位
-        let avatar_placeholder = div().w(avatar_size).h(avatar_size);
-
-        // 模拟 Header (名字+时间) 占位
-        let header_placeholder = div().h(crate::ui::constants::message_bubble_header_height()).w_full();
-
-        // 模拟消息气泡文本内容
-        let content_proxy = div()
-            .max_w(bubble_max_width)
-            .whitespace_normal() // 关键：允许文本换行
-            .text_sm() // 关键：字体大小必须一致
-            .line_height(relative(crate::ui::constants::message_bubble_line_height())) // 关键：行高必须一致
-            .child(message.content.clone());
-
-        // 模拟气泡内边距
-        let bubble_inner_padding = div()
-            .px(crate::ui::constants::message_bubble_inner_padding_x())
-            .py(crate::ui::constants::message_bubble_inner_padding_y())
-            .child(content_proxy);
-
-        // [新增] 模拟箭头和气泡的包裹容器
-        // 这里不需要区分左右，只需要把宽度加上去，确保换行计算正确即可。
-        // 使用 flex 和 items_center 模拟真实结构。
-        let bubble_and_arrow_proxy = div()
-            .flex()
-            .items_center()
-            // 箭头的占位符
-            .child(div().w(arrow_placeholder_width).h(crate::ui::constants::message_bubble_arrow_height()).flex_none())
-            // 气泡本体
-            .child(bubble_inner_padding);
-
-        // 组装整体结构
-        let layout_proxy = div()
-            .w_full()
-            .px(crate::ui::constants::message_bubble_outer_padding_x())
-            .py(crate::ui::constants::message_bubble_outer_padding_y())
-            .child(
-                div()
-                    .flex()
-                    .gap(crate::ui::constants::message_bubble_gap_avatar_content())
-                    .child(avatar_placeholder)
-                    .child(
-                        gpui_component::v_flex()
-                            .gap(crate::ui::constants::message_bubble_gap_header_bubble())
-                            .child(header_placeholder)
-                            // [修改] 使用新的包含箭头的代理
-                            .child(bubble_and_arrow_proxy),
-                    ),
-            );
-
-        // 3. 执行测量
-        let mut element = layout_proxy.into_any_element();
-        // 给予确定的宽度，让 GPUI 计算内容所需的高度
-        let available_space = size(AvailableSpace::Definite(width), AvailableSpace::MinContent);
-        element.layout_as_root(available_space, window, cx)
+        // 使用 MessageBubble 中封装的测量逻辑，确保与渲染逻辑保持一致
+        crate::ui::composites::message_bubble::MessageBubble::measure(message, width, window, cx)
     }
 
     /// 重新计算所有消息的高度（用于切换会话或窗口宽度改变）
-    fn remeasure_all_messages(
-        &mut self,
-        width: Pixels,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn remeasure_all_messages(&mut self, width: Pixels, window: &mut Window, cx: &mut App) {
         if let Some(session) = &self.current_session {
             let mut sizes = Vec::with_capacity(session.messages.len());
 
@@ -345,12 +275,11 @@ impl Render for ChatArea {
                         .map(|ix| {
                             // [核心优化] session.messages[ix] 是 Rc<Message>
                             // clone() 极其廉价
-                            let bubble = crate::ui::composites::message_bubble::MessageBubble::new(
+                            crate::ui::composites::message_bubble::MessageBubble::new(
                                 session.messages[ix].clone(),
                             )
-                            .group(is_group);
-
-                            div().w_full().child(bubble).into_any_element()
+                            .group(is_group)
+                            .into_any_element()
                         })
                         .collect()
                 },
