@@ -1,15 +1,16 @@
 use crate::app::config::Preferences;
-use crate::ui::theme::{Theme, ThemeMode};
 use crate::ui::composites::setting_card;
+use crate::ui::theme::{Theme, ThemeMode};
 use gpui::{DismissEvent, EventEmitter, *};
 use gpui_component::{
+    ActiveTheme, Icon, Sizable, Size, StyledExt as _, WindowExt,
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
     h_flex,
     input::{InputEvent, InputState},
     popover::Popover,
     slider::{Slider, SliderEvent, SliderState},
     switch::Switch,
-    v_flex, ActiveTheme, Icon, Sizable, StyledExt as _, WindowExt, Size
+    v_flex,
 };
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -848,11 +849,7 @@ impl SettingsWindow {
         setting_card::setting_row()
             .py_2()
             .child(div().text_sm().text_color(theme.foreground).child(label))
-            .child(
-                Switch::new(label)
-                    .checked(enabled)
-                    .with_size(Size::Small),
-            )
+            .child(Switch::new(label).checked(enabled).with_size(Size::Small))
     }
 
     fn render_static_language_item<FSet, L>(
@@ -1272,7 +1269,6 @@ impl Render for SettingsWindow {
                             .w_full()
                             .py_4()
                             .px_3()
-                            .gap_1()
                             .child(self.render_tab_item(0, "账号与存储", cx))
                             .child(self.render_tab_item(1, "通用", cx))
                             .child(self.render_tab_item(2, "快捷键", cx))

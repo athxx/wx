@@ -1,6 +1,6 @@
 use gpui::{
-    px, App, AppContext, Bounds, Size, WindowBackgroundAppearance, WindowBounds, WindowKind,
-    WindowOptions,
+    App, AppContext, Bounds, Size, WindowBackgroundAppearance, WindowBounds, WindowKind,
+    WindowOptions, px,
 };
 use gpui_component::{Root, TitleBar};
 
@@ -51,6 +51,11 @@ pub fn open_main_window(cx: &mut App) {
 
     cx.open_window(options, |window, cx| {
         let app_view = WeixinApp::view(window, cx, store.clone());
+
+        window.on_window_should_close(cx, |_window, cx| {
+            cx.quit();
+            true
+        });
 
         // 在 App 级别路由 SelectSession / ToolbarClicked 动作到 WeixinApp 实例，
         // 确保通过 window.dispatch_action 触发的动作能够被根 Workspace 处理。
