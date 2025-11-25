@@ -9,10 +9,10 @@ https://github.com/user-attachments/assets/7cb41bdf-2477-46e3-a679-94512f77ee0b
 <table>
   <tr>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/fca8f803-249a-4af0-9a5b-7399695dbe39" width="100%">
+    <img width="1350" height="975" alt="ScreenShot_2025-11-25_092812_925" src="https://github.com/user-attachments/assets/649a224e-7290-46f2-8b48-c20b4aa14898" />
     </td>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/253ed274-43e8-4ecb-878e-0050563c63a9" width="100%">
+      <img width="1350" height="975" alt="ScreenShot_2025-11-25_092818_275" src="https://github.com/user-attachments/assets/386bd4b4-d0c8-4bef-b58b-f103295eb79b" />
     </td>
   </tr>
 
@@ -30,13 +30,13 @@ https://github.com/user-attachments/assets/7cb41bdf-2477-46e3-a679-94512f77ee0b
       <img src="https://github.com/user-attachments/assets/77b7de35-3448-4249-831b-d4510600646b" width="100%">
     </td>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/34d05977-a91f-4544-ab18-ca663f259226" width="100%">
+     <img width="1350" height="975" alt="ScreenShot_2025-11-25_092842_077" src="https://github.com/user-attachments/assets/1d72d083-a38f-4fb2-9194-ca58c415f7e8" />
     </td>
   </tr>
 
   <tr>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/67879f7e-5f89-4521-b717-800396102ede" width="100%">
+   <img width="1350" height="975" alt="ScreenShot_2025-11-25_092837_016" src="https://github.com/user-attachments/assets/fb8bc18d-3bb8-44fe-ab91-8318a5fbb5ce" />
     </td>
     <td width="50%">
       <img src="https://github.com/user-attachments/assets/df10b6b6-0a0d-40e6-8de4-22143925b4de" width="100%">
@@ -88,6 +88,7 @@ cargo build --release
 ## License
 
 Learning project only
+
 
 
 
