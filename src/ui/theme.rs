@@ -1,4 +1,4 @@
-use gpui::{rgb, App, Hsla};
+use gpui::{App, Hsla, rgb};
 use gpui_component::{ActiveTheme as _, Theme as GpuiTheme, ThemeMode as GpuiThemeMode};
 
 pub use gpui_component::ThemeMode;
@@ -96,8 +96,7 @@ impl Theme {
         GpuiTheme::change(GpuiThemeMode::Light, None, cx);
         let colors = WeixinThemeColors::light();
         let theme = GpuiTheme::global_mut(cx);
-        // 为了做“毛玻璃”效果：用工具栏背景色 + 透明度作为全局 background，
-        // 这样左侧透明区域会是半透明的 toolbar 颜色，既能看到背景，又有一层明显的雾化感。
+
         theme.background = colors.toolbar_bg.opacity(0.74);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
@@ -111,8 +110,8 @@ impl Theme {
         GpuiTheme::change(GpuiThemeMode::Dark, None, cx);
         let colors = WeixinThemeColors::dark();
         let theme = GpuiTheme::global_mut(cx);
-        // 暗色模式同样使用带透明度的工具栏背景色作为全局 background，形成“暗色毛玻璃”的感觉
-        theme.background = colors.toolbar_bg.opacity(0.74);
+
+        theme.background = colors.toolbar_bg.opacity(0.85);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
         theme.primary = rgb(0x07C160).into();

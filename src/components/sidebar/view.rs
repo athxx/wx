@@ -1,11 +1,12 @@
 use gpui::{
-    div, App, AppContext, Context, Corner, Entity, InteractiveElement, IntoElement, ParentElement,
-    Render, StatefulInteractiveElement, Styled, Window,
+    App, AppContext, Context, Corner, Entity, InteractiveElement, IntoElement, ParentElement,
+    Render, StatefulInteractiveElement, Styled, Window, div,
 };
 use gpui_component::{
+    ActiveTheme, Icon, WindowExt,
     button::{Button, ButtonVariants},
     popover::Popover,
-    v_flex, ActiveTheme, Icon, WindowExt,
+    v_flex,
 };
 
 use crate::ui::theme::Theme;
@@ -473,11 +474,18 @@ impl ToolBar {
 }
 
 impl Render for ToolBar {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        // let weixin_colors = Theme::weixin_colors(cx);
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let weixin_colors = Theme::weixin_colors(cx);
+        let theme = cx.theme();
+
+        let bg_color = if window.is_window_active() {
+            theme.transparent
+        } else {
+            weixin_colors.toolbar_bg
+        };
 
         v_flex()
-            // .bg(weixin_colors.toolbar_bg)
+            .bg(bg_color)
             .w(crate::ui::constants::toolbar_width())
             .h_full()
             .items_center()
@@ -518,8 +526,8 @@ impl Render for ToolBar {
                     .items_center()
                     .gap_0()
                     .mb_2()
-                    .child(self.render_phone_button(_window, cx))
-                    .child(self.render_menu_button(_window, cx)),
+                    .child(self.render_phone_button(window, cx))
+                    .child(self.render_menu_button(window, cx)),
             )
     }
 }

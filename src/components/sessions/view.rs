@@ -1,11 +1,13 @@
 use gpui::{
-    div, App, AppContext, AvailableSpace, ClickEvent, Context, Entity, InteractiveElement,
-    IntoElement, ParentElement, Pixels, Render, StatefulInteractiveElement, Styled, Window,
+    App, AppContext, AvailableSpace, ClickEvent, Context, Div, Entity, InteractiveElement,
+    IntoElement, ParentElement, Pixels, Render, Stateful, StatefulInteractiveElement, Styled,
+    Window, div,
 };
 use gpui_component::{
+    ActiveTheme, VirtualListScrollHandle,
     input::InputState,
     scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
-    v_flex, v_virtual_list, ActiveTheme, VirtualListScrollHandle,
+    v_flex, v_virtual_list,
 };
 use std::rc::Rc;
 
@@ -65,7 +67,7 @@ impl SessionList {
         contact: &Contact,
         index: usize,
         cx: &mut Context<Self>,
-    ) -> impl IntoElement {
+    ) -> Stateful<Div> {
         let is_selected = self
             .selected_id
             .as_ref()
@@ -129,7 +131,9 @@ impl SessionList {
 
                 cx.notify();
             }))
-            .child(crate::ui::composites::session_row::SessionRow::new(contact.clone()))
+            .child(crate::ui::composites::session_row::SessionRow::new(
+                contact.clone(),
+            ))
     }
 }
 

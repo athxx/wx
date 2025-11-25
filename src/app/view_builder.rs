@@ -2,10 +2,10 @@ use crate::app::state::WeixinApp;
 use crate::ui::fixed_resizable::fixed_h_resizable;
 use crate::ui::theme::Theme;
 use gpui::{
-    div, px, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
-    WindowControlArea,
+    Context, InteractiveElement, IntoElement, ParentElement, Render, Styled, Window,
+    WindowControlArea, div, px,
 };
-use gpui_component::{avatar::Avatar, h_flex, v_flex, ActiveTheme, Icon};
+use gpui_component::{ActiveTheme, Icon, avatar::Avatar, h_flex, v_flex};
 
 impl Render for WeixinApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -33,7 +33,7 @@ impl WeixinApp {
             .w_full()
             .h(UI::title_bar_height())
             .items_center()
-            .child(self.render_user_avatar(cx))
+            .child(self.render_user_avatar(window, cx))
             .child(
                 fixed_h_resizable("title-search-resizable", self.session_split_state.clone())
                     .width_range(
@@ -45,15 +45,22 @@ impl WeixinApp {
             )
     }
 
-    fn render_user_avatar(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn render_user_avatar(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         use crate::ui::constants as UI;
-        // let weixin_colors = Theme::weixin_colors(cx);
+        let weixin_colors = Theme::weixin_colors(cx);
+        let theme = cx.theme();
+        // 当窗口激活时使用透明背景，失去焦点时使用不透明工具栏底色
+        let bg_color = if window.is_window_active() {
+            theme.transparent
+        } else {
+            weixin_colors.toolbar_bg
+        };
+
         div()
             .window_control_area(WindowControlArea::Drag)
             .w(UI::toolbar_width())
             .h_full()
-            // 工具栏做透明效果：如果需要恢复原来的不透明样式，取消下一行注释即可
-            // .bg(weixin_colors.toolbar_bg)
+            .bg(bg_color)
             .flex()
             .items_center()
             .justify_center()

@@ -642,7 +642,7 @@ impl SettingsWindow {
         current_mode: ThemeMode,
         window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> impl IntoElement {
+    ) -> gpui::AnyElement {
         let theme = cx.theme();
         let foreground = theme.foreground;
 
@@ -650,6 +650,7 @@ impl SettingsWindow {
             .py_2()
             .child(div().text_sm().text_color(foreground).child("外观"))
             .child(self.render_theme_button(current_mode, window, cx))
+            .into_any_element()
     }
 
     /// 通用设置中的下拉按钮触发器（语言 / 主题 / 字体），统一使用同一风格。
@@ -1123,7 +1124,7 @@ impl SettingsWindow {
         &self,
         _window: &mut Window,
         cx: &mut Context<Self>,
-    ) -> impl IntoElement {
+    ) -> gpui::AnyElement {
         let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
 
@@ -1150,6 +1151,7 @@ impl SettingsWindow {
                     .child("") // 第 7 节
                     .child("大"), // 第 8 节：大
             )
+            .into_any_element()
     }
 
     fn render_tab_item(
