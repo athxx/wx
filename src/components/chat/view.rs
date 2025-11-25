@@ -1,11 +1,11 @@
 use gpui::{
-    div, px, App, AppContext, Context, Entity, EventEmitter, InteractiveElement, IntoElement,
-    ParentElement, Pixels, Render, Styled, Window, WindowControlArea,
+    App, AppContext, Context, Entity, EventEmitter, InteractiveElement, IntoElement, ParentElement,
+    Pixels, Render, Styled, Window, WindowControlArea, div, px,
 };
 use gpui_component::{
-    h_flex,
+    ActiveTheme, Icon, VirtualListScrollHandle, h_flex,
     scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
-    v_flex, v_virtual_list, ActiveTheme, Icon, VirtualListScrollHandle,
+    v_flex, v_virtual_list,
 };
 use std::rc::Rc;
 
@@ -31,6 +31,8 @@ pub struct ChatArea {
     item_sizes: Rc<Vec<gpui::Size<Pixels>>>,
     /// 记录上次计算高度时的窗口宽度，用于判断是否需要重新计算折行
     last_layout_width: Option<Pixels>,
+    /// 记录上次字体校准高度，用于检测字体大小变化
+    last_font_calibration: Pixels,
 }
 
 /// ChatArea 对外发送的事件（例如输入框高度调整完成）。
@@ -68,6 +70,7 @@ impl ChatArea {
             scroll_state: ScrollbarState::default(),
             item_sizes: Rc::new(Vec::new()),
             last_layout_width: None,
+            last_font_calibration: px(0.),
         }
     }
 
@@ -206,6 +209,25 @@ impl Render for ChatArea {
 
         let window_width = window.viewport_size().width;
         let mut needs_remeasure = false;
+
+        // [校准] 检测字体大小是否发生变化
+        // 通过测量一个标准样本的高度来判断
+        let mut sample_text = div().text_sm().child("Tg").into_any_element();
+        let sample_layout = sample_text.layout_as_root(
+            gpui::size(
+                gpui::AvailableSpace::MinContent,
+                gpui::AvailableSpace::MinContent,
+            ),
+            window,
+            cx,
+        );
+        let current_calibration = sample_layout.height;
+
+        if (self.last_font_calibration - current_calibration).abs() > px(0.1) {
+            needs_remeasure = true;
+            self.last_font_calibration = current_calibration;
+        }
+
         if let Some(last_w) = self.last_layout_width {
             if (last_w - window_width).abs() > px(1.0) {
                 needs_remeasure = true;

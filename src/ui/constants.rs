@@ -1,4 +1,4 @@
-use gpui::{px, Pixels};
+use gpui::{Pixels, px};
 use gpui_component::PixelsExt;
 
 pub fn toolbar_width() -> Pixels {
@@ -194,9 +194,7 @@ pub fn message_bubble_arrow_width() -> Pixels {
 pub fn message_bubble_arrow_height() -> Pixels {
     px(10.0)
 }
-pub fn message_bubble_header_height() -> Pixels {
-    px(16.0)
-}
+
 pub fn message_bubble_inner_padding_x() -> Pixels {
     px(12.0)
 }

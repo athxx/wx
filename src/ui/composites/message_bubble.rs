@@ -38,7 +38,7 @@ impl MessageBubble {
         cx: &mut App,
     ) -> gpui::Size<gpui::Pixels> {
         use gpui::{div, relative, size, AvailableSpace, IntoElement, ParentElement, Styled};
-        use gpui_component::v_flex;
+        use gpui_component::{h_flex, v_flex};
 
         // 1. 获取与 MessageBubble 一致的布局常量
         let avatar_size = crate::ui::constants::avatar_small();
@@ -51,9 +51,11 @@ impl MessageBubble {
         let avatar_placeholder = div().w(avatar_size).h(avatar_size);
 
         // 模拟 Header (名字+时间) 占位
-        let header_placeholder = div()
-            .h(crate::ui::constants::message_bubble_header_height())
-            .w_full();
+        // 使用与 render 完全一致的 h_flex 结构，确保高度计算准确
+        let header_placeholder = h_flex()
+            .gap_2()
+            .child(div().text_xs().child("Name"))
+            .child(div().text_xs().child("00:00"));
 
         // 模拟消息气泡文本内容（合并容器，避免多一层 wrapper）
         let bubble_inner_padding = div()
@@ -83,6 +85,8 @@ impl MessageBubble {
             .w_full()
             .px(crate::ui::constants::message_bubble_outer_padding_x())
             .py(crate::ui::constants::message_bubble_outer_padding_y())
+            // 增加微小底部缓冲，防止计算精度误差导致重叠
+            .pb(gpui::px(2.))
             .child(
                 div()
                     .flex()

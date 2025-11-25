@@ -69,16 +69,13 @@ pub(crate) enum ShortcutInputField {
 
 pub struct SettingsWindow {
     active_tab_ix: usize,
-    current_language: String,
     root_focus_handle: gpui::FocusHandle,
 
-    /// Current font size value used by the slider (in px).
-    current_font_size_value: f32,
     /// Layout bounds of the custom font slider bar, used for drag position mapping。
     font_slider_bounds: Bounds<Pixels>,
     /// 当前是否在拖动字体大小滑块。
     is_font_slider_dragging: bool,
-    _theme_observer: Option<gpui::Subscription>,
+
     theme_hover: ThemeHover,
     language_hover: LanguageHover,
     translate_language_selection: String,
@@ -107,14 +104,11 @@ impl Focusable for SettingsWindow {
 
 impl SettingsWindow {
     pub fn new(_window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let theme_observer = cx.observe_global::<Theme>(|_this, cx| {
-            cx.notify();
-        });
         let root_focus_handle = cx.focus_handle();
 
         // 字体大小 Slider：0..8 共 9 档，根据当前全局字体大小计算初始档位
-        let current_font_size: f32 = cx.theme().font_size.into();
-        let initial_font_size = current_font_size;
+        // let current_font_size: f32 = cx.theme().font_size.into();
+        // let initial_font_size = current_font_size;
 
         let auto_download_limit_input = cx.new(|cx| InputState::new(_window, cx).placeholder("20"));
         auto_download_limit_input.update(cx, |state, cx| {
@@ -193,10 +187,7 @@ impl SettingsWindow {
 
         let mut this = Self {
             active_tab_ix: 1,
-            current_language: "简体中文".to_string(),
             root_focus_handle,
-            current_font_size_value: initial_font_size,
-            _theme_observer: Some(theme_observer),
             theme_hover: ThemeHover::None,
             language_hover: LanguageHover::None,
             translate_language_selection: "简体中文".to_string(),
@@ -859,7 +850,7 @@ impl SettingsWindow {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
-        let current_language = self.current_language.clone();
+        let current_language = "简体中文".to_string();
         let settings = cx.entity();
 
         Popover::new("language-popover")
@@ -1106,8 +1097,9 @@ impl SettingsWindow {
     }
 
     /// 根据当前字体大小像素值，返回对应的档位索引（0..=8）。
-    fn current_font_size_index(&self) -> usize {
-        Self::font_index_from_size(self.current_font_size_value) as usize
+    fn current_font_size_index(&self, cx: &App) -> usize {
+        let size: f32 = cx.theme().font_size.into();
+        Self::font_index_from_size(size) as usize
     }
 
     /// 设置字体大小档位，并同步到全局主题与偏好配置。
@@ -1115,7 +1107,6 @@ impl SettingsWindow {
         let clamped = if index > 8 { 8 } else { index } as i32;
         let size = Self::font_size_from_index(clamped);
 
-        self.current_font_size_value = size;
         gpui_component::Theme::global_mut(cx).font_size = px(size);
         Preferences::save_from_app(cx);
         cx.refresh_windows();
@@ -1123,11 +1114,11 @@ impl SettingsWindow {
     }
 
     /// 根据鼠标在窗口中的位置，计算对应的字体档位索引（0..=8）。
-    fn font_slider_index_from_position(&self, position: Point<Pixels>) -> usize {
+    fn font_slider_index_from_position(&self, position: Point<Pixels>, cx: &App) -> usize {
         let bounds = self.font_slider_bounds;
         let total_width = bounds.size.width;
         if total_width <= px(0.) {
-            return self.current_font_size_index();
+            return self.current_font_size_index(cx);
         }
 
         // 将全局坐标转换为滑块内部坐标，并限制在 [0, total_width] 范围内。
@@ -1269,7 +1260,7 @@ impl SettingsWindow {
         // 滑块使用纯白色
         let thumb_color: Hsla = rgb(0xFFFFFF).into();
         let label_color = cx.theme().muted_foreground;
-        let current_index = self.current_font_size_index();
+        let current_index = self.current_font_size_index(cx);
         // 段数 = 8（刻度 = 段数 + 1 = 9）
         let total_steps = 8usize;
 
@@ -1307,7 +1298,7 @@ impl SettingsWindow {
                 move |e: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut App| {
                     _ = settings_for_down.update(cx, |this: &mut SettingsWindow, cx| {
                         this.is_font_slider_dragging = true;
-                        let idx = this.font_slider_index_from_position(e.position);
+                        let idx = this.font_slider_index_from_position(e.position, cx);
                         this.set_font_size_index(idx, cx);
                     });
                 },
@@ -1317,7 +1308,7 @@ impl SettingsWindow {
                 move |e: &gpui::MouseMoveEvent, _window: &mut Window, cx: &mut App| {
                     _ = settings_for_move.update(cx, |this: &mut SettingsWindow, cx| {
                         if this.is_font_slider_dragging {
-                            let idx = this.font_slider_index_from_position(e.position);
+                            let idx = this.font_slider_index_from_position(e.position, cx);
                             this.set_font_size_index(idx, cx);
                         }
                     });
