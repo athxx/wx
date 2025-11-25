@@ -21,7 +21,7 @@ A WeChat desktop UI clone built with [gpui](https://github.com/zed-industries/gp
       <img src="https://github.com/user-attachments/assets/4f7da950-ee2d-42d6-a59e-112ea2ce7667" width="100%">
     </td>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/73643df6-99ab-4e63-b71e-39ecb54b3867" width="100%">
+      <img width="825" height="1020" alt="ScreenShot_2025-11-25_144943_803" src="https://github.com/user-attachments/assets/54f02b3d-1207-4107-98ed-f72e4762300f" />
     </td>
   </tr>
 
@@ -45,7 +45,7 @@ A WeChat desktop UI clone built with [gpui](https://github.com/zed-industries/gp
 
   <tr>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/ef1ff3ab-45c3-4d16-8230-d81301438164" width="100%">
+ <img width="825" height="1020" alt="ScreenShot_2025-11-25_144949_518" src="https://github.com/user-attachments/assets/5728461d-d196-4df9-9829-cbbf878c9d9a" />
     </td>
     <td width="50%">
       <img src="https://github.com/user-attachments/assets/fa39253f-f780-466b-bc5d-fbf8d44d154b" width="100%">
@@ -88,6 +88,7 @@ cargo build --release
 ## License
 
 Learning project only
+
 
 
 
