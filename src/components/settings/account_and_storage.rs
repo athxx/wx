@@ -1,8 +1,8 @@
 use crate::ui::composites::setting_card;
 use crate::ui::theme::Theme;
-use gpui::{div, px, InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Styled};
+use gpui::{InteractiveElement, IntoElement, MouseDownEvent, ParentElement, Styled, div, px};
 use gpui_component::switch::Switch;
-use gpui_component::{h_flex, input::Input, v_flex, ActiveTheme, Sizable, Size};
+use gpui_component::{ActiveTheme, Sizable, Size, h_flex, input::Input, v_flex};
 
 use super::SettingsWindow;
 

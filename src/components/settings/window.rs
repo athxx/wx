@@ -1,14 +1,13 @@
 use crate::app::config::Preferences;
 use crate::ui::composites::setting_card;
 use crate::ui::theme::{Theme, ThemeMode};
-use gpui::{DismissEvent, EventEmitter, *};
+use gpui::{Bounds, DismissEvent, EventEmitter, InteractiveElement, *};
 use gpui_component::{
     ActiveTheme, Icon, Sizable, Size, StyledExt as _, WindowExt,
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
     h_flex,
     input::{InputEvent, InputState},
     popover::Popover,
-    slider::{Slider, SliderEvent, SliderState},
     switch::Switch,
     v_flex,
 };
@@ -73,12 +72,12 @@ pub struct SettingsWindow {
     current_language: String,
     root_focus_handle: gpui::FocusHandle,
 
-    /// Slider state for controlling global font size.
-    font_slider: Entity<SliderState>,
-    /// Subscription to listen slider changes and update global font size.
-    _font_slider_subscription: gpui::Subscription,
     /// Current font size value used by the slider (in px).
     current_font_size_value: f32,
+    /// Layout bounds of the custom font slider bar, used for drag position mapping。
+    font_slider_bounds: Bounds<Pixels>,
+    /// 当前是否在拖动字体大小滑块。
+    is_font_slider_dragging: bool,
     _theme_observer: Option<gpui::Subscription>,
     theme_hover: ThemeHover,
     language_hover: LanguageHover,
@@ -113,51 +112,9 @@ impl SettingsWindow {
         });
         let root_focus_handle = cx.focus_handle();
 
-        // 字体大小 Slider：0..7 共 8 档，根据当前全局字体大小计算初始档位
+        // 字体大小 Slider：0..8 共 9 档，根据当前全局字体大小计算初始档位
         let current_font_size: f32 = cx.theme().font_size.into();
-        let initial_index = match current_font_size.round() as i32 {
-            14 => 0.0, // 小
-            16 => 1.0, // 标准
-            17 => 2.0,
-            18 => 3.0,
-            19 => 4.0,
-            20 => 5.0,
-            21 => 6.0,
-            22 => 7.0, // 大
-            _ => 1.0,
-        };
         let initial_font_size = current_font_size;
-
-        let font_slider = cx.new(|_| {
-            SliderState::new()
-                .min(0.0)
-                .max(7.0)
-                .step(1.0)
-                .default_value(initial_index)
-        });
-
-        // Slider 变化时，映射到具体像素并更新全局字体大小
-        let font_slider_subscription =
-            cx.subscribe(&font_slider, |this, _, event: &SliderEvent, cx| {
-                let SliderEvent::Change(value) = event;
-                let idx = value.start().round().clamp(0.0, 7.0) as i32;
-                let size = match idx {
-                    0 => 14.0, // 小
-                    1 => 16.0, // 标准
-                    2 => 17.0,
-                    3 => 18.0,
-                    4 => 19.0,
-                    5 => 20.0,
-                    6 => 21.0,
-                    7 => 22.0, // 大
-                    _ => 16.0,
-                };
-                this.current_font_size_value = size;
-                gpui_component::Theme::global_mut(cx).font_size = px(size);
-                // 保存到偏好 JSON
-                Preferences::save_from_app(cx);
-                cx.refresh_windows();
-            });
 
         let auto_download_limit_input = cx.new(|cx| InputState::new(_window, cx).placeholder("20"));
         auto_download_limit_input.update(cx, |state, cx| {
@@ -238,8 +195,6 @@ impl SettingsWindow {
             active_tab_ix: 1,
             current_language: "简体中文".to_string(),
             root_focus_handle,
-            font_slider,
-            _font_slider_subscription: font_slider_subscription,
             current_font_size_value: initial_font_size,
             _theme_observer: Some(theme_observer),
             theme_hover: ThemeHover::None,
@@ -258,6 +213,8 @@ impl SettingsWindow {
             shortcut_input_widths: HashMap::new(),
             focused_shortcut_input: None,
             _shortcut_input_subscriptions: shortcut_input_subscriptions,
+            font_slider_bounds: Bounds::default(),
+            is_font_slider_dragging: false,
         };
 
         this.refresh_all_shortcut_input_widths(_window, cx);
@@ -473,6 +430,37 @@ impl SettingsWindow {
             .unwrap_or(true);
         self.shortcut_input_widths.insert(field, width);
         changed
+    }
+
+    fn font_size_from_index(index: i32) -> f32 {
+        match index {
+            0 => 15.0,
+            1 => 16.0, // 标准
+            2 => 17.0,
+            3 => 18.0,
+            4 => 19.0,
+            5 => 20.0,
+            6 => 21.0,
+            7 => 22.0,
+            8 => 23.0,
+            _ => 16.0,
+        }
+    }
+
+    fn font_index_from_size(size: f32) -> i32 {
+        let rounded = size.round() as i32;
+        match rounded {
+            15 => 0,
+            16 => 1, // 标准
+            17 => 2,
+            18 => 3,
+            19 => 4,
+            20 => 5,
+            21 => 6,
+            22 => 7,
+            23 => 8,
+            _ => 1,
+        }
     }
 
     fn measure_shortcut_input_width(
@@ -1117,36 +1105,290 @@ impl SettingsWindow {
             })
     }
 
+    /// 根据当前字体大小像素值，返回对应的档位索引（0..=8）。
+    fn current_font_size_index(&self) -> usize {
+        Self::font_index_from_size(self.current_font_size_value) as usize
+    }
+
+    /// 设置字体大小档位，并同步到全局主题与偏好配置。
+    fn set_font_size_index(&mut self, index: usize, cx: &mut Context<Self>) {
+        let clamped = if index > 8 { 8 } else { index } as i32;
+        let size = Self::font_size_from_index(clamped);
+
+        self.current_font_size_value = size;
+        gpui_component::Theme::global_mut(cx).font_size = px(size);
+        Preferences::save_from_app(cx);
+        cx.refresh_windows();
+        cx.notify();
+    }
+
+    /// 根据鼠标在窗口中的位置，计算对应的字体档位索引（0..=8）。
+    fn font_slider_index_from_position(&self, position: Point<Pixels>) -> usize {
+        let bounds = self.font_slider_bounds;
+        let total_width = bounds.size.width;
+        if total_width <= px(0.) {
+            return self.current_font_size_index();
+        }
+
+        // 将全局坐标转换为滑块内部坐标，并限制在 [0, total_width] 范围内。
+        let inner_x = position.x - bounds.left();
+        let inner_x = inner_x.clamp(px(0.), total_width);
+
+        // 归一化到 [0, 1]，再映射到 0..=8 的 9 个刻度；round 保证“超过一半才切换到下一档”。
+        let frac = inner_x / total_width; // 0.0..=1.0
+        let pos = frac * 8.0; // 0.0..=8.0 （tick 0..8）
+
+        let idx = pos.round().clamp(0.0, 8.0) as i32;
+        idx as usize
+    }
+
+    /// 单个段的渲染：用 div 自行绘制一段进度条，并在当前档位上显示滑块和刻度。
+    fn render_font_size_step(
+        &self,
+        step_index: usize,
+        total_steps: usize,
+        current_index: usize,
+        active_color: Hsla,
+        inactive_color: Hsla,
+        thumb_color: Hsla,
+        active_tick_color: Hsla,
+        inactive_tick_color: Hsla,
+    ) -> impl IntoElement {
+        // tick 索引 (0..=8) -> 段索引 (0..=7)：
+        //  index=0/1 都落在第 0 段，其余 i 落在第 (i-1) 段
+
+        // 已经过的段：索引 < 当前 tick 索引
+        let is_filled_segment = step_index < current_index;
+        let bg_color = if is_filled_segment {
+            active_color
+        } else {
+            inactive_color
+        };
+        // 刻度本身从第 0 根到当前档位都用高亮色，保证当前档位的刻度始终是高亮的。
+        let tick_color = if step_index <= current_index {
+            active_tick_color
+        } else {
+            inactive_tick_color
+        };
+
+        // 横向一段进度条 + 上方刻度 + 当前档位的白色滑块
+        let mut segment = div()
+            .flex_1()
+            // 中间线更细一点，方便刻度上下居中
+            .h(px(3.))
+            .relative()
+            .bg(bg_color)
+            .cursor_pointer()
+            // 左侧刻度（每一段都有），高度略大于中线，并上下居中
+            .child(
+                div()
+                    .absolute()
+                    .top(px(-2.5)) // 3px 在线上方 + 6px 在线下方，和 3px 线居中
+                    .w(px(3.)) // 稍微粗一点
+                    .h(px(9.))
+                    .left(px(0.))
+                    .bg(tick_color),
+            );
+
+        // 最右侧再补一个刻度，保证两端都有刻度
+        if step_index + 1 == total_steps {
+            let end_tick_color = if step_index + 1 <= current_index {
+                active_tick_color
+            } else {
+                inactive_tick_color
+            };
+
+            segment = segment.child(
+                div()
+                    .absolute()
+                    .top(px(-2.5))
+                    .w(px(2.))
+                    .h(px(10.))
+                    .right(px(0.))
+                    .bg(end_tick_color),
+            );
+        }
+
+        // 当前档位上的白色椭圆滑块（左右更扁一点）
+        // Case 1: Thumb is at the start of this segment (step_index == current_index)
+        if step_index == current_index {
+            segment = segment.child(
+                div()
+                    .absolute()
+                    .top(px(-6.5))
+                    // 白色滑块的中心对齐当前刻度线：放在当前段的左边界，左右稍微超出一点
+                    .left(px(-5.))
+                    .w(px(10.))
+                    .h(px(18.))
+                    .rounded_full()
+                    .bg(thumb_color),
+            );
+        } else if current_index == total_steps && step_index + 1 == total_steps {
+            // Case 2: Thumb is at the end of the slider (current_index == total_steps),
+            // and this is the last segment (step_index == total_steps - 1)
+            segment = segment.child(
+                div()
+                    .absolute()
+                    .top(px(-6.5))
+                    .right(px(-5.))
+                    .w(px(10.))
+                    .h(px(18.))
+                    .rounded_full()
+                    .bg(thumb_color),
+            );
+        }
+
+        segment
+    }
+
+    /// 字体大小设置滑块：使用 div 模拟，不再使用组件库的 Slider。
+    /// 共有 9 档（15–23），不能停在每个间隔的中间，只能落在离散档位上。
     pub(crate) fn render_font_size_slider(
         &self,
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
-        let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
+        let settings = cx.entity();
+        let settings_for_down = settings.clone();
+        let settings_for_move = settings.clone();
+        let settings_for_up = settings.clone();
+
+        let active_color = weixin_colors.weixin_green;
+        // 中间线基础颜色：使用 light 主题里的 item_hover（EAEAEA），暗色主题继续用 slider_bar 逻辑
+        let inactive_color = match cx.theme().mode {
+            crate::ui::theme::ThemeMode::Light => weixin_colors.item_hover,
+            _ => cx.theme().slider_bar.opacity(0.2),
+        };
+        // 刻度基础颜色：同样用 item_hover；经过的部分仍然用 primary 绿色
+        let inactive_tick_color = match cx.theme().mode {
+            crate::ui::theme::ThemeMode::Light => weixin_colors.settings_button_bg,
+            _ => cx.theme().slider_bar.opacity(0.4),
+        };
+        let active_tick_color: Hsla = weixin_colors.weixin_green;
+        // 滑块使用纯白色
+        let thumb_color: Hsla = rgb(0xFFFFFF).into();
+        let label_color = cx.theme().muted_foreground;
+        let current_index = self.current_font_size_index();
+        // 段数 = 8（刻度 = 段数 + 1 = 9）
+        let total_steps = 8usize;
+
+        // 内部真正的细线条和刻度条
+        let bar_inner = h_flex()
+            .gap_0()
+            .w_full()
+            .h(px(3.))
+            .rounded(crate::ui::constants::radius_sm())
+            .children((0..total_steps).map(|i| {
+                self.render_font_size_step(
+                    i,
+                    total_steps,
+                    current_index,
+                    active_color,
+                    inactive_color,
+                    thumb_color,
+                    active_tick_color,
+                    inactive_tick_color,
+                )
+            }));
+
+        // 外层放大点击/拖动命中区域（高度更高），事件全部绑在外层容器上
+        let bar = div()
+            .h(px(18.))
+            .w_full()
+            .flex()
+            .items_center()
+            // 让内部 absolute 的 canvas 相对于整个条容器定位，
+            // 这样记录到的 bounds 就是整条滑块条本身的宽度和位置
+            .relative()
+            // 按下时开始拖动，并跳转到对应档位
+            .on_mouse_down(
+                MouseButton::Left,
+                move |e: &gpui::MouseDownEvent, _window: &mut Window, cx: &mut App| {
+                    _ = settings_for_down.update(cx, |this: &mut SettingsWindow, cx| {
+                        this.is_font_slider_dragging = true;
+                        let idx = this.font_slider_index_from_position(e.position);
+                        this.set_font_size_index(idx, cx);
+                    });
+                },
+            )
+            // 鼠标移动时，如果处于拖动状态则更新档位
+            .on_mouse_move(
+                move |e: &gpui::MouseMoveEvent, _window: &mut Window, cx: &mut App| {
+                    _ = settings_for_move.update(cx, |this: &mut SettingsWindow, cx| {
+                        if this.is_font_slider_dragging {
+                            let idx = this.font_slider_index_from_position(e.position);
+                            this.set_font_size_index(idx, cx);
+                        }
+                    });
+                },
+            )
+            // 松开鼠标时结束拖动
+            .on_mouse_up(
+                MouseButton::Left,
+                move |_e: &gpui::MouseUpEvent, _window: &mut Window, cx: &mut App| {
+                    _ = settings_for_up.update(cx, |this: &mut SettingsWindow, _cx| {
+                        this.is_font_slider_dragging = false;
+                    });
+                },
+            )
+            .child(bar_inner)
+            // 使用 canvas 记录当前滑块的布局边界，用于鼠标位置映射
+            .child({
+                let settings = settings.clone();
+                canvas(
+                    move |bounds, _, cx| {
+                        _ = settings.update(cx, |this: &mut SettingsWindow, _| {
+                            this.font_slider_bounds = bounds;
+                        });
+                    },
+                    |_, _, _, _| {},
+                )
+                .absolute()
+                .size_full()
+            });
 
         v_flex()
             .gap_1()
             .w(px(160.))
+            .child(bar)
             .child(
-                Slider::new(&self.font_slider)
-                    .bg(weixin_colors.weixin_green)
-                    .text_color(theme.slider_thumb)
-                    .rounded(crate::ui::constants::radius_sm()),
-            )
-            .child(
-                h_flex()
-                    .justify_between()
-                    .text_xs()
-                    .text_color(theme.muted_foreground)
-                    .child("小") // 第 1 节：小
-                    .child("标准") // 第 2 节：标准
-                    .child("") // 第 3 节
-                    .child("") // 第 4 节
-                    .child("") // 第 5 节
-                    .child("") // 第 6 节
-                    .child("") // 第 7 节
-                    .child("大"), // 第 8 节：大
+                div()
+                    .relative()
+                    .w_full()
+                    .h(px(14.))
+                    .text_size(px(10.))
+                    .text_color(label_color)
+                    .child(
+                        div().absolute().left(px(0.)).child(
+                            div()
+                                .w(px(0.))
+                                .flex()
+                                .justify_center()
+                                .whitespace_nowrap()
+                                .child("小"),
+                        ),
+                    )
+                    .child(
+                        div().absolute().left(px(20.)).child(
+                            div()
+                                .w(px(0.))
+                                .flex()
+                                .justify_center()
+                                .whitespace_nowrap()
+                                .child("标准"),
+                        ),
+                    )
+                    .child(
+                        div().absolute().right(px(0.)).child(
+                            div()
+                                .w(px(0.))
+                                .flex()
+                                .justify_center()
+                                .whitespace_nowrap()
+                                .child("大"),
+                        ),
+                    ),
             )
             .into_any_element()
     }
