@@ -39,7 +39,7 @@ A WeChat desktop UI clone built with [gpui](https://github.com/zed-industries/gp
    <img width="1350" height="975" alt="ScreenShot_2025-11-25_092837_016" src="https://github.com/user-attachments/assets/fb8bc18d-3bb8-44fe-ab91-8318a5fbb5ce" />
     </td>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/df10b6b6-0a0d-40e6-8de4-22143925b4de" width="100%">
+     <img width="825" height="1019" alt="ScreenShot_2025-11-27_123228_520" src="https://github.com/user-attachments/assets/689a445e-10d8-466c-a31f-997bd7c0594a" />
     </td>
   </tr>
 
@@ -88,6 +88,7 @@ cargo build --release
 ## License
 
 Learning project only
+
 
 
 
