@@ -97,7 +97,7 @@ impl Theme {
         let colors = WeixinThemeColors::light();
         let theme = GpuiTheme::global_mut(cx);
 
-        theme.background = colors.toolbar_bg.opacity(0.74);
+        theme.background = colors.toolbar_bg.opacity(0.7);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
         theme.primary = rgb(0x07C160).into();
