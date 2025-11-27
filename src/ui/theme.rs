@@ -104,6 +104,7 @@ impl Theme {
         theme.primary_hover = rgb(0x06B75B).into();
         theme.primary_active = colors.weixin_green;
         theme.switch = rgb(0xcccccc).into();
+        theme.switch_thumb = rgb(0xffffff).into();
     }
 
     pub fn set_dark(cx: &mut App) {
@@ -118,6 +119,7 @@ impl Theme {
         theme.primary_hover = rgb(0x13C468).into();
         theme.primary_active = colors.weixin_green;
         theme.switch = rgb(0xcccccc).into();
+        theme.switch_thumb = rgb(0xffffff).into();
     }
 
     pub fn general_select_button_colors(cx: &App) -> (Hsla, Hsla, Hsla, Hsla) {

@@ -6,7 +6,7 @@ use gpui::{
 use gpui_component::{
     ActiveTheme, VirtualListScrollHandle,
     input::InputState,
-    scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
+    scroll::{Scrollbar, ScrollbarAxis},
     v_flex, v_virtual_list,
 };
 use std::rc::Rc;
@@ -20,7 +20,6 @@ pub struct SessionList {
     selected_id: Option<String>,
     pub search_input: Entity<InputState>,
     scroll_handle: VirtualListScrollHandle,
-    scroll_state: ScrollbarState,
 }
 
 impl SessionList {
@@ -31,7 +30,6 @@ impl SessionList {
             selected_id: None,
             search_input,
             scroll_handle: VirtualListScrollHandle::new(),
-            scroll_state: ScrollbarState::default(),
         }
     }
 
@@ -184,10 +182,7 @@ impl Render for SessionList {
                         .left_0()
                         .right_0()
                         .bottom_0()
-                        .child(
-                            Scrollbar::both(&self.scroll_state, &self.scroll_handle)
-                                .axis(ScrollbarAxis::Vertical),
-                        ),
+                        .child(Scrollbar::new(&self.scroll_handle).axis(ScrollbarAxis::Vertical)),
                 ),
             )
     }

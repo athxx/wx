@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 gpui = "0.2.2"
-gpui-component = { version = "0.4.1" }
+gpui-component = { git="https://github.com/longbridge/gpui-component.git" }
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }

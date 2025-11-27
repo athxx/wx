@@ -4,7 +4,7 @@ use gpui::{
 };
 use gpui_component::{
     ActiveTheme, Icon, VirtualListScrollHandle, h_flex,
-    scroll::{Scrollbar, ScrollbarAxis, ScrollbarState},
+    scroll::{Scrollbar, ScrollbarAxis},
     v_flex, v_virtual_list,
 };
 use std::rc::Rc;
@@ -26,7 +26,7 @@ pub struct ChatArea {
     drag_start_height: Pixels,
     /// 聊天消息虚拟列表的滚动句柄和滚动条状态。
     scroll_handle: VirtualListScrollHandle,
-    scroll_state: ScrollbarState,
+
     /// 缓存的消息高度列表，直接传给 virtual_list
     item_sizes: Rc<Vec<gpui::Size<Pixels>>>,
     /// 记录上次计算高度时的窗口宽度，用于判断是否需要重新计算折行
@@ -67,7 +67,7 @@ impl ChatArea {
             drag_start_y: px(0.),
             drag_start_height: default_input_height,
             scroll_handle: VirtualListScrollHandle::new(),
-            scroll_state: ScrollbarState::default(),
+
             item_sizes: Rc::new(Vec::new()),
             last_layout_width: None,
             last_font_calibration: px(0.),
@@ -348,7 +348,7 @@ impl Render for ChatArea {
                                     .right_0()
                                     .bottom_0()
                                     .child(
-                                        Scrollbar::both(&self.scroll_state, &self.scroll_handle)
+                                        Scrollbar::new(&self.scroll_handle)
                                             .axis(ScrollbarAxis::Vertical),
                                     ),
                             ),
