@@ -3,11 +3,12 @@ use crate::ui::composites::setting_card;
 use crate::ui::theme::{Theme, ThemeMode};
 use gpui::{Bounds, DismissEvent, EventEmitter, InteractiveElement, *};
 use gpui_component::{
-    ActiveTheme, Icon, Sizable, Size, StyledExt as _, WindowExt,
+    ActiveTheme, Icon, Sizable, Size, WindowExt,
     button::{Button, ButtonCustomVariant, ButtonVariants as _},
     h_flex,
     input::{InputEvent, InputState},
     popover::Popover,
+    scroll::ScrollableElement,
     switch::Switch,
     v_flex,
 };
@@ -1554,7 +1555,7 @@ impl Render for SettingsWindow {
                             .child(
                                 v_flex()
                                     .size_full()
-                                    .scrollable(Axis::Vertical)
+                                    .overflow_y_scrollbar()
                                     .p_6()
                                     .child(self.render_content(window, cx)),
                             ),

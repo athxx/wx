@@ -1,12 +1,13 @@
 use gpui::{
-    div, prelude::FluentBuilder, relative, rgb, AppContext, Context, Entity, EventEmitter,
-    IntoElement, ParentElement, Render, Styled, Window,
+    AppContext, Context, Entity, EventEmitter, IntoElement, ParentElement, Render, Styled, Window,
+    div, prelude::FluentBuilder, relative, rgb,
 };
 use gpui_component::{
+    ActiveTheme, Disableable,
     button::{Button, ButtonVariants},
     h_flex,
     input::{Input, InputState},
-    v_flex, ActiveTheme, Disableable,
+    v_flex,
 };
 
 pub struct ChatInput {
@@ -21,7 +22,7 @@ impl EventEmitter<ChatInputEvent> for ChatInput {}
 
 impl ChatInput {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input_state = cx.new(|cx| InputState::new(window, cx).auto_grow(1, 1));
+        let input_state = cx.new(|cx| InputState::new(window, cx).multi_line(true));
         Self { input_state }
     }
 
