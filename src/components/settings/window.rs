@@ -224,8 +224,8 @@ impl SettingsWindow {
         &self.auto_download_limit_input
     }
 
-    pub(crate) fn blur_focus(&self, window: &mut Window) {
-        self.root_focus_handle.focus(window);
+    pub(crate) fn blur_focus(&self, window: &mut Window, cx: &mut App) {
+        self.root_focus_handle.focus(window, cx);
     }
 
     pub(crate) fn is_auto_download_input_focused(&self) -> bool {

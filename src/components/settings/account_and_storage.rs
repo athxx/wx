@@ -118,9 +118,9 @@ impl SettingsWindow {
             );
 
             let blur_auto_input =
-                cx.listener(|this: &mut SettingsWindow, _: &MouseDownEvent, window, _| {
+                cx.listener(|this: &mut SettingsWindow, _: &MouseDownEvent, window, cx| {
                     if this.is_auto_download_input_focused() {
-                        this.blur_focus(window);
+                        this.blur_focus(window, cx);
                     }
                 });
 

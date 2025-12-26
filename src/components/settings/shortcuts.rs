@@ -167,9 +167,9 @@ impl SettingsWindow {
         };
         let blur_field = field;
         let blur_listener = cx.listener(
-            move |this: &mut SettingsWindow, _: &MouseDownEvent, window, _| {
+            move |this: &mut SettingsWindow, _: &MouseDownEvent, window, cx| {
                 if this.is_shortcut_input_focused(blur_field) {
-                    this.blur_focus(window);
+                    this.blur_focus(window, cx);
                 }
             },
         );
