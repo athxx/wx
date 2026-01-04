@@ -1,3 +1,3 @@
-pub use view::SessionList;
+pub use view::{DragSession, SessionList};
 
 pub mod view;

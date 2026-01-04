@@ -4,16 +4,51 @@ use gpui::{
     Window, div,
 };
 use gpui_component::{
-    ActiveTheme, VirtualListScrollHandle,
+    ActiveTheme, VirtualListScrollHandle, v_flex,
     input::InputState,
     scroll::{Scrollbar, ScrollbarAxis},
-    v_flex, v_virtual_list,
+    v_virtual_list,
 };
 use std::rc::Rc;
 
 use crate::app::actions::{OpenChatWindow, SelectSession};
 use crate::models::Contact;
 use crate::ui::theme::Theme;
+
+/// 拖拽会话时携带的数据
+#[derive(Clone)]
+pub struct DragSession {
+    pub contact: Contact,
+}
+
+impl DragSession {
+    pub fn new(contact: Contact) -> Self {
+        Self { contact }
+    }
+}
+
+impl Render for DragSession {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
+
+        // 拖拽时显示的会话项，与列表中的item样式一致
+        div()
+            .id("drag-session")
+            .cursor_grab()
+            .w(crate::ui::constants::session_list_min_width())
+            .px_4()
+            .py_3()
+            .border_1()
+            .border_color(theme.border)
+            .rounded(theme.radius)
+            .bg(weixin_colors.session_list_bg)
+            .shadow_md()
+            .child(crate::ui::composites::session_row::SessionRow::new(
+                self.contact.clone(),
+            ))
+    }
+}
 
 pub struct SessionList {
     contacts: Vec<Contact>,
@@ -72,6 +107,7 @@ impl SessionList {
             .map(|id| id == &contact.id)
             .unwrap_or(false);
         let contact_id = contact.id.clone();
+        let contact_for_drag = contact.clone();
         let theme = cx.theme();
         let weixin_colors = Theme::weixin_colors(cx);
 
@@ -95,6 +131,14 @@ impl SessionList {
                 }
             })
             .cursor_pointer()
+            // 添加拖拽支持
+            .on_drag(
+                DragSession::new(contact_for_drag),
+                |drag, _, _, cx| {
+                    cx.stop_propagation();
+                    cx.new(|_| drag.clone())
+                },
+            )
             .on_click(cx.listener(move |this, ev: &ClickEvent, window, cx| {
                 // 再次点击已选中的会话 -> 取消选中；否则选中该会话
                 let toggling_off = this

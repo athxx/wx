@@ -1,4 +1,6 @@
+use crate::app::actions::OpenChatWindow;
 use crate::app::state::WeixinApp;
+use crate::components::sessions::DragSession;
 use crate::ui::fixed_resizable::fixed_h_resizable;
 use crate::ui::theme::Theme;
 use gpui::{
@@ -12,6 +14,7 @@ impl Render for WeixinApp {
         let notification_layer = gpui_component::Root::render_notification_layer(window, cx);
 
         v_flex()
+            .id("weixin-app-root")
             .size_full()
             .on_mouse_down(gpui::MouseButton::Left, |_, window, _| {
                 window.blur();
@@ -179,7 +182,21 @@ impl WeixinApp {
             .child(right_header)
     }
 
-    fn render_main_content(&self, _cx: &Context<Self>) -> impl IntoElement {
+    fn render_main_content(&self, cx: &Context<Self>) -> impl IntoElement {
+        // 包装聊天区域，添加 drop 监听，只有拖动到聊天区域才打开独立窗口
+        let chat_area_with_drop = div()
+            .id("chat-area-drop-zone")
+            .size_full()
+            .on_drop(cx.listener(|_this, drag: &DragSession, window, cx| {
+                window.dispatch_action(
+                    Box::new(OpenChatWindow {
+                        contact_id: drag.contact.id.clone(),
+                    }),
+                    cx,
+                );
+            }))
+            .child(self.chat_area.clone());
+
         h_flex()
             .flex_1()
             .w_full()
@@ -192,7 +209,7 @@ impl WeixinApp {
                             ..crate::ui::constants::session_list_max_width(),
                     )
                     .left(self.session_list.clone())
-                    .right(self.chat_area.clone()),
+                    .right(chat_area_with_drop),
             )
     }
 }
