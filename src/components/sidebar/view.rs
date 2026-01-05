@@ -4,7 +4,7 @@ use gpui::{
 };
 use gpui_component::{
     ActiveTheme, Icon, WindowExt,
-    button::{Button, ButtonVariants},
+    button::{Button, ButtonCustomVariant, ButtonVariants},
     popover::Popover,
     v_flex,
 };
@@ -94,7 +94,10 @@ impl ToolBar {
                     .p(crate::ui::constants::toolbar_item_padding())
                     .rounded(crate::ui::constants::radius_md())
                     .cursor_pointer()
-                    .hover(|this| this.bg(theme.secondary))
+                    .hover(move |this| {
+                        this.bg(weixin_colors.toolbar_button_hover)
+                            .border_color(gpui::transparent_black())
+                    })
                     .on_click(cx.listener(move |this, _, window, cx| {
                         this.active_item = item;
                         window.dispatch_action(Box::new(ToolbarClicked { item }), cx);
@@ -133,7 +136,12 @@ impl ToolBar {
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
         let toolbar = cx.entity();
+
+        let button_style = ButtonCustomVariant::new(cx)
+            .hover(weixin_colors.toolbar_button_hover)
+            .active(weixin_colors.toolbar_button_hover);
 
         div().w_full().flex().items_center().justify_center().child(
             Popover::new("toolbar-phone")
@@ -141,7 +149,8 @@ impl ToolBar {
                 .anchor(Corner::BottomRight)
                 .trigger(
                     Button::new("phone-trigger")
-                        .ghost()
+                        .custom(button_style)
+                        .rounded(crate::ui::constants::radius_md())
                         .w(crate::ui::constants::toolbar_trigger_size())
                         .h(crate::ui::constants::toolbar_trigger_size())
                         .child(
@@ -153,7 +162,7 @@ impl ToolBar {
                         ),
                 )
                 .content(move |_, _window, cx| {
-                    let theme = cx.theme();
+                    let weixin_colors = Theme::weixin_colors(cx);
 
                     let phone_hover = toolbar.read(cx).phone_hover;
                     let video_hovered = matches!(phone_hover, PhonePopoverHover::Video);
@@ -194,7 +203,9 @@ impl ToolBar {
                     v_flex()
                         .gap_1()
                         .p_2()
-                        .bg(theme.popover)
+                        .bg(weixin_colors.popover_bg)
+                        .rounded(crate::ui::constants::radius_md())
+                        .shadow_md()
                         .child(Self::render_menu_item_helper(
                             "phone-video-call",
                             "视频通话",
@@ -229,7 +240,12 @@ impl ToolBar {
 
     fn render_menu_button(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.theme();
+        let weixin_colors = Theme::weixin_colors(cx);
         let toolbar = cx.entity();
+
+        let button_style = ButtonCustomVariant::new(cx)
+            .hover(weixin_colors.toolbar_button_hover)
+            .active(weixin_colors.toolbar_button_hover);
 
         div()
             .w_full()
@@ -243,7 +259,8 @@ impl ToolBar {
                     .anchor(Corner::BottomRight)
                     .trigger(
                         Button::new("menu-trigger")
-                            .ghost()
+                            .custom(button_style)
+                            .rounded(crate::ui::constants::radius_md())
                             .w(crate::ui::constants::toolbar_trigger_size())
                             .h(crate::ui::constants::toolbar_trigger_size())
                             .child(
@@ -255,7 +272,7 @@ impl ToolBar {
                             ),
                     )
                     .content(move |_, _window, cx| {
-                        let theme = cx.theme();
+                        let weixin_colors = Theme::weixin_colors(cx);
 
                         let menu_hover = toolbar.read(cx).menu_hover;
                         let video_live_hovered = matches!(menu_hover, MenuPopoverHover::VideoLive);
@@ -362,7 +379,7 @@ impl ToolBar {
                             .w(crate::ui::constants::toolbar_popover_width())
                             .gap_0()
                             .py_2()
-                            .bg(theme.popover)
+                            .bg(weixin_colors.popover_bg)
                             .p_1()
                             .rounded(crate::ui::constants::radius_md())
                             .shadow_md()

@@ -1,13 +1,20 @@
 use crate::ui::base::icon_button::IconButton;
-use gpui::{div, App, IntoElement, ParentElement, RenderOnce, Styled, Window};
+use gpui::{div, App, IntoElement, ParentElement, RenderOnce, Styled, Window, prelude::FluentBuilder};
 use gpui_component::h_flex;
 
 #[derive(IntoElement)]
-pub struct ChatToolbar;
+pub struct ChatToolbar {
+    is_group: bool,
+}
 
 impl ChatToolbar {
     pub fn new() -> Self {
-        Self
+        Self { is_group: false }
+    }
+
+    pub fn is_group(mut self, is_group: bool) -> Self {
+        self.is_group = is_group;
+        self
     }
 }
 
@@ -35,8 +42,14 @@ impl RenderOnce for ChatToolbar {
             .child(
                 h_flex()
                     .gap_2()
-                    .child(IconButton::new("circle.svg"))
-                    .child(IconButton::new("video-call.svg")),
+                    .when(self.is_group, |this| {
+                        this.child(IconButton::new("circle.svg"))
+                            .child(IconButton::new("video-call.svg"))
+                    })
+                    .when(!self.is_group, |this| {
+                        this.child(IconButton::new("phone-call.svg"))
+                            .child(IconButton::new("video.svg"))
+                    }),
             )
     }
 }

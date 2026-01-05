@@ -1,11 +1,12 @@
 use gpui::{App, Hsla, rgb};
-use gpui_component::{ActiveTheme as _, Theme as GpuiTheme, ThemeMode as GpuiThemeMode};
+use gpui_component::{ActiveTheme as _, Colorize, Theme as GpuiTheme, ThemeMode as GpuiThemeMode};
 
 pub use gpui_component::ThemeMode;
 
 #[derive(Debug, Clone)]
 pub struct WeixinThemeColors {
     pub toolbar_bg: Hsla,
+    pub toolbar_button_hover: Hsla,
     pub session_list_bg: Hsla,
     pub chat_area_bg: Hsla,
     pub search_bar_bg: Hsla,
@@ -26,12 +27,16 @@ pub struct WeixinThemeColors {
     pub input_field_focus: Hsla,
     pub send_button_disabled_bg: Hsla,
     pub send_button_disabled_text: Hsla,
+    pub window_button_hover: Hsla,
+    pub popover_bg: Hsla,
+    pub chat_button_hover: Hsla,
 }
 
 impl WeixinThemeColors {
     pub fn light() -> Self {
         Self {
-            toolbar_bg: rgb(0xEDEDED).into(),
+            toolbar_bg: rgb(0xE6E6E6).into(),
+            toolbar_button_hover: rgb(0xDADADA).into(),
             session_list_bg: rgb(0xF7F7F7).into(),
             chat_area_bg: rgb(0xEDEDED).into(),
             search_bar_bg: rgb(0xEDEDED).into(),
@@ -52,16 +57,20 @@ impl WeixinThemeColors {
             input_field_focus: rgb(0x44D087).into(),
             send_button_disabled_bg: rgb(0xE1E1E1).into(),
             send_button_disabled_text: rgb(0x9D9D9D).into(),
+            window_button_hover: rgb(0xE0E0E0).into(),
+            popover_bg: rgb(0xFFFFFF).into(),
+            chat_button_hover: rgb(0xE0E0E0).into(),
         }
     }
 
     pub fn dark() -> Self {
         Self {
-            toolbar_bg: rgb(0x2A2A2A).into(),
-            session_list_bg: rgb(0x1F1F1F).into(),
-            chat_area_bg: rgb(0x2A2A2A).into(),
-            search_bar_bg: rgb(0x2A2A2A).into(),
-            item_hover: rgb(0x333333).into(),
+            toolbar_bg: rgb(0x2C2C2C).into(),
+            toolbar_button_hover: rgb(0x363636).into(),
+            session_list_bg: rgb(0x242424).into(),
+            chat_area_bg: rgb(0x191919).into(),
+            search_bar_bg: rgb(0x2F2F2F).into(),
+            item_hover: rgb(0x2F2F2F).into(),
             item_selected: rgb(0x3A3A3A).into(),
             settings_button_bg: rgb(0x2F2F2F).into(),
             settings_button_hover: rgb(0x353535).into(),
@@ -78,6 +87,9 @@ impl WeixinThemeColors {
             input_field_focus: rgb(0x0E9A51).into(),
             send_button_disabled_bg: rgb(0x252525).into(),
             send_button_disabled_text: rgb(0x575757).into(),
+            window_button_hover: rgb(0x242424).into(),
+            popover_bg: rgb(0x242424).into(),
+            chat_button_hover: rgb(0x242424).into(),
         }
     }
 }
@@ -97,7 +109,7 @@ impl Theme {
         let colors = WeixinThemeColors::light();
         let theme = GpuiTheme::global_mut(cx);
 
-        theme.background = colors.toolbar_bg.opacity(0.7);
+        theme.background = colors.toolbar_bg.lighten(0.07).opacity(0.7);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
         theme.primary = rgb(0x07C160).into();
@@ -112,7 +124,7 @@ impl Theme {
         let colors = WeixinThemeColors::dark();
         let theme = GpuiTheme::global_mut(cx);
 
-        theme.background = colors.toolbar_bg.opacity(0.85);
+        theme.background = colors.toolbar_bg.darken(0.45).opacity(0.85);
         theme.caret = colors.caret;
         theme.ring = colors.input_field_focus;
         theme.primary = rgb(0x07C160).into();

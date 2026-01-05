@@ -83,6 +83,7 @@ impl IconButton {
 impl RenderOnce for IconButton {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
+        let weixin_colors = crate::ui::theme::Theme::weixin_colors(cx);
         let bg_color = if self.selected {
             theme.secondary
         } else {
@@ -98,8 +99,8 @@ impl RenderOnce for IconButton {
             .rounded(self.rounded)
             .cursor_pointer()
             .bg(bg_color)
-            .hover(|s| s.bg(theme.secondary_hover))
-            .active(|s| s.bg(theme.secondary_active))
+            .hover(|s| s.bg(weixin_colors.chat_button_hover))
+            .active(|s| s.bg(weixin_colors.chat_button_hover))
             .when_some(self.width, |this, w| this.w(w))
             .when_some(self.height, |this, h| this.h(h))
             .child(

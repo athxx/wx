@@ -12,6 +12,7 @@ use gpui_component::{
 
 pub struct ChatInput {
     input_state: Entity<InputState>,
+    is_group: bool,
 }
 
 pub enum ChatInputEvent {
@@ -23,7 +24,15 @@ impl EventEmitter<ChatInputEvent> for ChatInput {}
 impl ChatInput {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input_state = cx.new(|cx| InputState::new(window, cx).multi_line(true));
-        Self { input_state }
+        Self {
+            input_state,
+            is_group: false,
+        }
+    }
+
+    pub fn set_is_group(&mut self, is_group: bool, cx: &mut Context<Self>) {
+        self.is_group = is_group;
+        cx.notify();
     }
 
     fn send_message(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -55,7 +64,10 @@ impl Render for ChatInput {
                     .w_full()
                     .px_3()
                     .py_1p5()
-                    .child(crate::ui::composites::chat_toolbar::ChatToolbar::new()),
+                    .child(
+                        crate::ui::composites::chat_toolbar::ChatToolbar::new()
+                            .is_group(self.is_group),
+                    ),
             )
             .child(
                 div()

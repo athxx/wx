@@ -81,8 +81,15 @@ impl ChatArea {
         self.current_session.as_ref()
     }
     pub fn set_session(&mut self, session: Option<ChatSession>, cx: &mut Context<Self>) {
+        let is_group = session.as_ref().map(|s| s.contact.is_group).unwrap_or(false);
         self.current_session = session;
         self.item_sizes = Rc::new(Vec::new());
+
+        // 更新输入框的 is_group 状态
+        self.chat_input.update(cx, |input, cx| {
+            input.set_is_group(is_group, cx);
+        });
+
         if let Some(session) = &self.current_session {
             self.scroll_handle.scroll_to_item(
                 session.messages.len().saturating_sub(1),

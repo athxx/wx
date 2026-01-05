@@ -16,6 +16,7 @@ impl ChatHeaderActions {
 impl RenderOnce for ChatHeaderActions {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = cx.theme();
+        let weixin_colors = crate::ui::theme::Theme::weixin_colors(cx);
 
         h_flex()
             .window_control_area(WindowControlArea::Drag)
@@ -29,7 +30,7 @@ impl RenderOnce for ChatHeaderActions {
                     .p(crate::ui::constants::header_action_padding())
                     .rounded(crate::ui::constants::radius_md())
                     .cursor_pointer()
-                    .hover(|this| this.bg(theme.secondary))
+                    .hover(|this| this.bg(weixin_colors.chat_button_hover))
                     .child(
                         Icon::default()
                             .w(crate::ui::constants::icon_sm())
@@ -46,7 +47,7 @@ impl RenderOnce for ChatHeaderActions {
                     .items_center()
                     .mr_2()
                     .cursor_pointer()
-                    .hover(|this| this.bg(theme.secondary))
+                    .hover(|this| this.bg(weixin_colors.chat_button_hover))
                     .w(crate::ui::constants::header_narrow_button_width())
                     .h(crate::ui::constants::header_narrow_button_height())
                     .child(
@@ -62,7 +63,7 @@ impl RenderOnce for ChatHeaderActions {
                     .p(crate::ui::constants::header_action_padding())
                     .rounded(crate::ui::constants::radius_md())
                     .cursor_pointer()
-                    .hover(|this| this.bg(theme.secondary))
+                    .hover(|this| this.bg(weixin_colors.chat_button_hover))
                     .child(
                         Icon::default()
                             .w(crate::ui::constants::icon_sm())

@@ -108,7 +108,7 @@ impl WeixinApp {
                             .path("plus.svg")
                             .w(crate::ui::constants::icon_xs())
                             .h(crate::ui::constants::icon_xs())
-                            .text_color(theme.foreground),
+                            .text_color(theme.muted_foreground),
                     ),
             )
     }
